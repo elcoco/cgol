@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>         // uint types
+#include <string.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -10,7 +11,7 @@
 #define X_LEN 50
 #define Y_LEN 30
 
-#define INTERVAL 500000
+#define INTERVAL 100000
 //#define INTERVAL 100000
 
 
@@ -46,8 +47,9 @@ void evolve(Node** nodes) {
     return;
 }
 
-int read_seed(Node** nodes, int xlim, int ylim, int x_offset, int y_offset) {
-    FILE *fp = fopen("seeds/glider.seed", "r");
+int read_seed(Node** nodes, char* path, int xlim, int ylim, int x_offset, int y_offset) {
+    FILE *fp = fopen(path, "r");
+    //FILE *fp = fopen("seeds/glider.seed", "r");
 
     char c;
 
@@ -55,8 +57,10 @@ int read_seed(Node** nodes, int xlim, int ylim, int x_offset, int y_offset) {
     int x = 0;
     int y = 0;
 
-    if (fp == NULL)
+    if (fp == NULL) {
+        printf("File not found!\n");
         return -1;
+    }
 
     while ((c = fgetc(fp)) != EOF ) {
 
@@ -78,10 +82,57 @@ int read_seed(Node** nodes, int xlim, int ylim, int x_offset, int y_offset) {
             x++;
         }
     }
+    return 0;
 }
 
-int8_t main() {
+void print_usage() {
+    printf("Seagull :: Game of life written in sea!\n");
+    printf("\nMandatory arguments:\n");
+    printf("    -f SEED_FILE\n");
+    printf("\nOptional arguments:\n");
+    printf("    -s SPEED_MS, Default=1000\n");
+}
+
+int8_t main(int argc, char** argv) {
     // TODO wrap nodes in matrix struct so we can save dimensions and stuff
+    // TODO random seed generator
+    // TODO check if patern is too big for matrix
+
+    //if (argc < 2) {
+    //    printf("Specify path\n");
+    //    return 1;
+    //}
+
+    int option;
+    char* seed_path;
+    int speed_ms = 1000000;
+
+    while((option = getopt(argc, argv, "f:s:")) != -1){ //get option from the getopt() method
+        switch (option) {
+            case 'f':
+               seed_path = strdup(optarg);
+               break;
+            case 's':
+               //printf("speed: %d\n", optarg);
+               speed_ms = atoi(optarg) * 1000;
+               break;
+            case ':': 
+                printf("option needs a value\n"); 
+                return 1;
+            case '?': 
+                print_usage();
+                return 1;
+       }
+    }
+    if (argc == 1) {
+        print_usage();
+        return 1;
+    }
+    if (!seed_path) {
+        printf("Please specify seed file.\n");
+        return 1;
+    }
+
     // get window size
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -93,7 +144,9 @@ int8_t main() {
 
     Node** nodes = init_nodes(matrix_width, matrix_height);
 
-    read_seed(nodes, matrix_width, matrix_height, 5, 5);
+    if (read_seed(nodes, seed_path, matrix_width, matrix_height, 5, 5) < 0)
+        return 1;
+
     print_matrix(nodes, matrix_width, matrix_height);
 
     while (1) {
@@ -102,7 +155,7 @@ int8_t main() {
 
         evolve(nodes);
         gen_counter++;
-        usleep(INTERVAL);
+        usleep(speed_ms);
     }
 
 

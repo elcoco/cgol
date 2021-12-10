@@ -10,14 +10,11 @@ $(shell mkdir -p $(BUILD_DIR))
 # target: dependencies
 # 	  action
 
-gol: matrix.o node.o main.o
-	$(CC) $(BUILD_DIR)/matrix.o $(BUILD_DIR)/node.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/gol
+default: node.o main.o
+	$(CC) $(BUILD_DIR)/node.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/seagull
 
 main.o: $(SRC_DIR)/main.c 
 	$(CC) -c $(SRC_DIR)/main.c -o $(BUILD_DIR)/main.o
-
-matrix.o: $(SRC_DIR)/matrix.c $(SRC_DIR)/matrix.h
-	$(CC) -c $(SRC_DIR)/matrix.c -o $(BUILD_DIR)/matrix.o
 
 node.o: $(SRC_DIR)/node.c $(SRC_DIR)/node.h
 	$(CC) -c $(SRC_DIR)/node.c -o $(BUILD_DIR)/node.o
