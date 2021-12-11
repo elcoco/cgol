@@ -9,6 +9,8 @@
 #include "node.h"
 #include "seed.h"
 
+#define DEFAULT_SPEED_MS 1000000
+
 
 /* TODO wrap nodes in matrix struct so we can save dimensions and stuff
  * TODO random seed generator
@@ -47,18 +49,7 @@ void evolve(Node** nodes) {
     return;
 }
 
-void print_usage() {
-    printf("Seagull :: Game of life written in sea!\n");
-    printf("\nMandatory arguments:\n");
-    printf("    -f SEED_FILE\n");
-    printf("\nOptional arguments:\n");
-    printf("    -s SPEED_MS, Default=1000\n");
-}
-
 int8_t main(int argc, char** argv) {
-    int option;
-    char* seed_path;
-    int speed_ms = 1000000;
     uint32_t gen_counter = 0;
 
     // get window size
@@ -67,40 +58,23 @@ int8_t main(int argc, char** argv) {
     int matrix_height = w.ws_row -3;
     int matrix_width = w.ws_col;
 
-    while((option = getopt(argc, argv, "f:s:")) != -1){ //get option from the getopt() method
-        switch (option) {
-            case 'f':
-               seed_path = strdup(optarg);
-               break;
-            case 's':
-               speed_ms = atoi(optarg) * 1000;
-               break;
-            case ':': 
-                printf("option needs a value\n"); 
-                return 1;
-            case '?': 
-                print_usage();
-                return 1;
-       }
-    }
-    if (argc == 1) {
-        print_usage();
+    // parse arguments
+    Args* args = parse_args(argc, argv);
+    if (!args)
         return 1;
-    }
-    if (!seed_path) {
-        printf("Please specify seed file.\n");
-        return 1;
-    }
+
+    // set some defaults
+    if (! args->speed_ms)
+        args->speed_ms = DEFAULT_SPEED_MS;
 
     Node** nodes = init_nodes(matrix_width, matrix_height);
 
     // read seed and write to matrix
     Seed* seed = init_seed(matrix_width, matrix_height);
-    if (seed->read_file(seed, seed_path) < 0)
+    if (seed->read_file(seed, args->seed_path) < 0)
         return 1;
-
-    seed->print_seed(seed);
-    seed->to_matrix(seed, nodes);
+    else
+        seed->to_matrix(seed, nodes);
 
     while (1) {
         print_matrix(nodes, matrix_width, matrix_height);
@@ -108,7 +82,7 @@ int8_t main(int argc, char** argv) {
 
         evolve(nodes);
         gen_counter++;
-        usleep(speed_ms);
+        usleep(args->speed_ms);
     }
     return 0;
 }
