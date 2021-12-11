@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "utils.h"
+
 
 typedef struct Node Node;
 struct Node {
@@ -47,7 +49,6 @@ void print_matrix(Node** nodes, uint32_t xlim, uint32_t ylim);
 int8_t create_nodes(Node* prev, uint32_t length, uint32_t index);
 int8_t display_nodes(Node *n);
 Node* get_node(Node* n, int32_t index);
-int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov);
 
 
 #endif

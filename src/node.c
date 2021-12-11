@@ -59,33 +59,6 @@ void print_matrix(Node** nodes, uint32_t xlim, uint32_t ylim) {
     printf("\n");
 }
 
-int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov) {
-    // translate array index to physical matrix coordinates
-    // apply movement, and translate back to array index
-
-    // find xy coordinates
-    int curx = cur_index % xlim;
-    int cury = cur_index / xlim;
-    int destx = curx + xmov;
-    int desty = cury + ymov;
-
-    if (destx > (xlim-1)) {
-        destx = destx - xlim;
-    }
-    if (destx < 0) {
-        destx = xlim - (0 - destx);
-    }
-    if (desty > (ylim-1)) {
-        desty = desty-ylim;
-    }
-    if (desty < 0) {
-        desty = ylim - (0 - desty);
-    }
-
-    //printf("index=%d=>%d, %d %d -> %d %d\n", cur_index, (desty*xlim) + destx, curx, cury, destx, desty);
-    return (desty*xlim) + destx;
-}
-
 Node** init_nodes(int xlim, int ylim) {
     //create_nodes(rn, xlim*ylim, 0);
     Node** nodes = (Node**)malloc(((xlim*ylim)+1)*sizeof(Node*));

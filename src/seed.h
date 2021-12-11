@@ -5,9 +5,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "node.h"
+#include "utils.h"
 
 #define DATA_SIZE 2000
+
+// from utils.h
+//int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov);
 
 typedef struct Seed Seed;
 

@@ -10,8 +10,11 @@ $(shell mkdir -p $(BUILD_DIR))
 # target: dependencies
 # 	  action
 
-default: node.o seed.o main.o
-	$(CC) $(BUILD_DIR)/node.o $(BUILD_DIR)/seed.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/seagull
+default: utils.o node.o seed.o main.o
+	$(CC) $(BUILD_DIR)/utils.o $(BUILD_DIR)/node.o $(BUILD_DIR)/seed.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/seagull
+
+utils.o: $(SRC_DIR)/utils.c $(SRC_DIR)/utils.h
+	$(CC) -c $(SRC_DIR)/utils.c -o $(BUILD_DIR)/utils.o
 
 main.o: $(SRC_DIR)/main.c 
 	$(CC) -c $(SRC_DIR)/main.c -o $(BUILD_DIR)/main.o

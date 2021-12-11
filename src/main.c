@@ -73,7 +73,6 @@ int8_t main(int argc, char** argv) {
                seed_path = strdup(optarg);
                break;
             case 's':
-               //printf("speed: %d\n", optarg);
                speed_ms = atoi(optarg) * 1000;
                break;
             case ':': 
