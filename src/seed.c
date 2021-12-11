@@ -1,18 +1,18 @@
 #include "seed.h"
 
 
-int get_dimensions(Seed* self) {
-}
-
 int read_file(Seed* self, char* path) {
-    /* Read file contents into seed struct */
+    /* Read file contents into seed struct.
+     * Count seed dimensions while we're at it. */
 
-    FILE *fp = fopen(path, "r");
-    char c;
-
-    // count seed dimensions, used for calculating matrix offset
     char buf[5000];
     int y = 0;
+    FILE *fp = fopen(path, "r");
+
+    if (fp == NULL) {
+        printf("File not found!\n");
+        return -1;
+    }
 
     while (fgets(buf, 5000, fp) != NULL ) {
 
@@ -21,8 +21,8 @@ int read_file(Seed* self, char* path) {
             continue;
         }
 
-        // count max x stringlen and record in struct
-        int len = strlen(buf)-2;
+        // count max x stringlen (used for calculating matrix offset) and record in struct
+        int len = strlen(buf)-2; // why 2?, \n is just one char ffs!
         if (len > self->max_x) {
             self->max_x = len;
         }
@@ -31,21 +31,56 @@ int read_file(Seed* self, char* path) {
         y++;
         (self->max_y)++;
     }
-    printf("maxy: %d\n", self->max_y);
-    printf("maxx: %d\n", self->max_x);
+
+    self->x_offset = (self->term_x-self->max_x) /2;
+    self->y_offset = (self->term_y-self->max_y) /2;
+
+    fclose(fp);
 }
 
-int to_matrix(Seed* self) {
+void print_seed(Seed* self) {
+    /* print seed for debugging */
+    char** ptr = self->data;
+
+    for (int i=0 ; i<self->max_y ; i++, ptr++) {
+        printf("[%d] %s\n", i, *ptr);
+    }
 }
 
-Seed* init_seed() {
+int to_matrix(Seed* self, Node** nodes) {
+    /* copy data from seed file into matrix */
+    char** dptr = self->data;
+
+    for (int y=0 ; y<self->max_y ; y++, dptr++) {
+        char* c = *dptr;
+
+        for (int x=0 ; x<strlen(*dptr) ; x++, c++) {
+            // only allowed char is O!
+            if (*c != 'O')
+                continue;
+
+            // Translate terminal location to index in nodes array
+            int loc = get_loc(self->term_x, self->term_y, 0, x+self->x_offset, y+self->y_offset);
+            printf("[%c] x=%d, y=%d, loc=%d\n", *c, x, y, loc);
+            Node* n = *(nodes+loc);
+            n->state = 1;
+        } 
+    }
+}
+
+Seed* init_seed(int term_x, int term_y) {
     /* Create seed struct and connect all the func pointers */
-    Seed* seed;
-    seed->get_dimensions = &get_dimensions;
+    Seed* seed = (Seed*)malloc(sizeof(Seed));
+
     seed->read_file = &read_file;
     seed->to_matrix = &to_matrix;
+    seed->print_seed = &print_seed;
 
     seed->max_x = 0;
     seed->max_y = 0;
+    seed->x_offset = 0;
+    seed->y_offset = 0;
+    seed->term_x = term_x;
+    seed->term_y = term_y;
     seed->data = (char**)malloc(DATA_SIZE*sizeof(char*));
 }
