@@ -7,16 +7,17 @@
 #include <unistd.h>
 
 #include "node.h"
-
-#define X_LEN 50
-#define Y_LEN 30
-
-#define INTERVAL 100000
-//#define INTERVAL 100000
+#include "seed.h"
 
 
+
+/* TODO wrap nodes in matrix struct so we can save dimensions and stuff
+ * TODO random seed generator
+ * TODO check if patern is too big for matrix
+ */
 
 void evolve(Node** nodes) {
+    /* Do one tick, check all cells for changes */
     Node** ptr = nodes;
     Node* n = *ptr;
 
@@ -47,11 +48,19 @@ void evolve(Node** nodes) {
     return;
 }
 
-int read_seed(Node** nodes, char* path, int xlim, int ylim, int x_offset, int y_offset) {
-    FILE *fp = fopen(path, "r");
-    //FILE *fp = fopen("seeds/glider.seed", "r");
 
+
+int read_seed(Node** nodes, char* path, int xlim, int ylim) {
+    /* Read seed from file, do some parsing of cell plaintext format.
+     * Load results into nodes array.
+     * TODO !!! this is a bit of a discustingly large function and needs splitting up.
+     */
+    FILE *fp = fopen(path, "r");
     char c;
+
+    // offset from seed in matrix
+    int x_offset;
+    int y_offset;
 
     // keep track of location in text file
     int x = 0;
@@ -62,7 +71,41 @@ int read_seed(Node** nodes, char* path, int xlim, int ylim, int x_offset, int y_
         return -1;
     }
 
+    // count seed dimensions, used for calculating matrix offset
+    char buf[5000];
+    int max_xlen = 0;
+    int max_ylen = 0;
+    while (fgets(buf, 5000, fp) != NULL ) {
+
+        if (buf[0] == '!') {
+            continue;
+        }
+
+        // remove newline
+        int xlen = strlen(buf)-2;
+        if (xlen > max_xlen) {
+            max_xlen = xlen;
+        }
+
+        max_ylen++;
+    }
+    printf("max_x/max_y: %d, %d\n", max_xlen, max_ylen);
+
+    x_offset = (xlim-max_xlen) /2;
+    y_offset = (ylim-max_ylen) /2;
+
+    rewind(fp);
+
+    // read file char by char
     while ((c = fgetc(fp)) != EOF ) {
+
+        // if line is a comment, fast forward
+        if (c == '!') {
+            while (c != '\n') {
+                c = fgetc(fp);
+            }
+            continue;
+        }
 
         // replace newline with 0 terminator
         if (c == '\n') {
@@ -70,18 +113,20 @@ int read_seed(Node** nodes, char* path, int xlim, int ylim, int x_offset, int y_
             x = 0;
             printf("\n");
         }
+
         else {
             // if character is read, find corresponding location in matrix
-            if (c != ' ') {
+            if (c == 'O') {
                 int loc = get_loc(xlim, ylim, 0, x+x_offset, y+y_offset);
                 Node* n = *(nodes+loc);
                 n->state = 1;
             }
 
-            printf("read: %c %d,%d\n", c, x, y);
+            printf("read: %c [%d,%d]\n", c, x, y);
             x++;
         }
     }
+    fclose(fp);
     return 0;
 }
 
@@ -94,18 +139,17 @@ void print_usage() {
 }
 
 int8_t main(int argc, char** argv) {
-    // TODO wrap nodes in matrix struct so we can save dimensions and stuff
-    // TODO random seed generator
-    // TODO check if patern is too big for matrix
-
-    //if (argc < 2) {
-    //    printf("Specify path\n");
-    //    return 1;
-    //}
 
     int option;
     char* seed_path;
     int speed_ms = 1000000;
+    uint32_t gen_counter = 0;
+
+    // get window size
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int matrix_height = w.ws_row -3;
+    int matrix_width = w.ws_col;
 
     while((option = getopt(argc, argv, "f:s:")) != -1){ //get option from the getopt() method
         switch (option) {
@@ -133,18 +177,15 @@ int8_t main(int argc, char** argv) {
         return 1;
     }
 
-    // get window size
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    uint32_t gen_counter = 0;
-
-    int matrix_height = w.ws_row -3;
-    int matrix_width = w.ws_col;
 
     Node** nodes = init_nodes(matrix_width, matrix_height);
 
-    if (read_seed(nodes, seed_path, matrix_width, matrix_height, 5, 5) < 0)
+    Seed* seed = init_seed();
+    seed->read_file(seed, seed_path);
+    return 1;
+
+    if (read_seed(nodes, seed_path, matrix_width, matrix_height) < 0)
         return 1;
 
     print_matrix(nodes, matrix_width, matrix_height);
