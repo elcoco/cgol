@@ -68,10 +68,10 @@ int8_t main(int argc, char** argv) {
         args->speed_ms = DEFAULT_SPEED_MS;
 
     Matrix* m = init_matrix(matrix_width, matrix_height);
-    Seed* seed = init_seed(matrix_width, matrix_height);
+    Seed* s = init_seed(matrix_width, matrix_height);
 
     if (args->seed_path) {
-        if (seed->read_file(seed, args->seed_path) < 0)
+        if (s->read_file(s, args->seed_path) < 0)
             return 1;
 
     } else if (args->random) {
@@ -79,10 +79,10 @@ int8_t main(int argc, char** argv) {
         return 1;
     }
 
-    seed->to_matrix(seed, m);
+    s->to_matrix(s, m);
 
     while (1) {
-        print_matrix(m);
+        m->print_matrix(m);
         printf("Generation: %d\n", gen_counter);
 
         evolve(m->nodes);

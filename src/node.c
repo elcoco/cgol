@@ -39,13 +39,13 @@ void print(Node* self) {
     printf("%2d\n",   self->se->index);
 }
 
-void print_matrix(Matrix* m) {
+void print_matrix(Matrix* self) {
     /* print out linked list as a matrix */
     uint32_t c = 0;
-    Node** n = m->nodes;
+    Node** n = self->nodes;
 
     while (*n) {
-        if ((c % m->max_x) == 0)
+        if ((c % self->max_x) == 0)
             printf("\n");
 
         if ((*n)->state)
@@ -59,12 +59,12 @@ void print_matrix(Matrix* m) {
     printf("\n");
 }
 
-Node** init_nodes(int xlim, int ylim) {
-    //create_nodes(rn, xlim*ylim, 0);
-    Node** nodes = (Node**)malloc(((xlim*ylim)+1)*sizeof(Node*));
+Node** init_nodes(int max_x, int max_y) {
+    //create_nodes(rn, max_x*max_y, 0);
+    Node** nodes = (Node**)malloc(((max_x*max_y)+1)*sizeof(Node*));
 
     // create nodes
-    for (int i=0 ; i<(xlim*ylim) ; i++) {
+    for (int i=0 ; i<(max_x*max_y) ; i++) {
         Node* n = (Node*)malloc(sizeof(Node));
         n->index = i;
         n->print = &print;
@@ -73,25 +73,25 @@ Node** init_nodes(int xlim, int ylim) {
     }
 
     // terminate array
-    nodes[(xlim*ylim)+1] = NULL;
+    nodes[(max_x*max_y)+1] = NULL;
 
     // define nodes orientation in physical space
     // link all neighbours, do wrapping in get_loc()
-    for (int i=0 ; i<(xlim*ylim) ; i++) {
+    for (int i=0 ; i<(max_x*max_y) ; i++) {
         Node* n = *(nodes+i);
-        n->nw = *(nodes + (get_loc(xlim, ylim, i, -1, -1))); 
-        n->n  = *(nodes + (get_loc(xlim, ylim, i,  0, -1))); 
-        n->ne = *(nodes + (get_loc(xlim, ylim, i,  1, -1))); 
+        n->nw = *(nodes + (get_loc(max_x, max_y, i, -1, -1))); 
+        n->n  = *(nodes + (get_loc(max_x, max_y, i,  0, -1))); 
+        n->ne = *(nodes + (get_loc(max_x, max_y, i,  1, -1))); 
 
-        n->w  = *(nodes + (get_loc(xlim, ylim, i, -1, 0))); 
-        n->e  = *(nodes + (get_loc(xlim, ylim, i,  1, 0))); 
+        n->w  = *(nodes + (get_loc(max_x, max_y, i, -1, 0))); 
+        n->e  = *(nodes + (get_loc(max_x, max_y, i,  1, 0))); 
 
-        n->sw = *(nodes + (get_loc(xlim, ylim, i, -1, 1))); 
-        n->s  = *(nodes + (get_loc(xlim, ylim, i,  0, 1))); 
-        n->se = *(nodes + (get_loc(xlim, ylim, i,  1, 1))); 
+        n->sw = *(nodes + (get_loc(max_x, max_y, i, -1, 1))); 
+        n->s  = *(nodes + (get_loc(max_x, max_y, i,  0, 1))); 
+        n->se = *(nodes + (get_loc(max_x, max_y, i,  1, 1))); 
 
-        //int loc = get_loc(xlim, ylim, i, 1, 1);
-        //printf("search: %d, found %d (%d:%d)\n", i, n->nw->index, xlim, ylim);
+        //int loc = get_loc(max_x, max_y, i, 1, 1);
+        //printf("search: %d, found %d (%d:%d)\n", i, n->nw->index, max_x, max_y);
     }
 
     return nodes;
@@ -102,5 +102,6 @@ Matrix* init_matrix(int max_x, int max_y) {
     m->nodes = init_nodes(max_x, max_y);
     m->max_x = max_x;
     m->max_y = max_y;
+    m->print_matrix = print_matrix;
     return m;
 }

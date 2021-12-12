@@ -38,15 +38,16 @@ struct Node {
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff
-typedef struct {
+typedef struct Matrix Matrix;
+struct Matrix {
     Node** nodes;
     int max_x;
     int max_y;
-} Matrix;
+    void(*print_matrix)(Matrix* m);
+};
 
 
 Node** init_nodes(int xlim, int ylim);
-void print_matrix(Matrix* m);
 Matrix* init_matrix(int max_x, int max_y);
 
 #endif
