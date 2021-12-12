@@ -3,29 +3,29 @@
 
 int8_t count_neighbours(Node* self) {
     // count active neighbours
-    self->neighbours = 0;
+    int neighbours = 0;
     if (self->nw && self->nw->state)
-        self->neighbours++;
+        neighbours++;
     if (self->n && self->n->state)
-        self->neighbours++;
+        neighbours++;
     if (self->ne && self->ne->state)
-        self->neighbours++;
+        neighbours++;
     if (self->w && self->w->state)
-        self->neighbours++;
+        neighbours++;
     if (self->e && self->e->state)
-        self->neighbours++;
+        neighbours++;
     if (self->sw && self->sw->state)
-        self->neighbours++;
+        neighbours++;
     if (self->s && self->s->state)
-        self->neighbours++;
+        neighbours++;
     if (self->se && self->se->state)
-        self->neighbours++;
+        neighbours++;
 
-    return self->neighbours;
+    return neighbours;
 }
 
 void print(Node* self) {
-    printf("in func: %d\n", self->index);
+    /* for debugging */
     printf("%2d <- ", self->nw->index);
     printf("%2d -> ", self->n->index);
     printf("%2d\n",   self->ne->index);
@@ -49,9 +49,9 @@ void print_matrix(Node** nodes, uint32_t xlim, uint32_t ylim) {
             printf("\n");
 
         if ((*n)->state)
-            printf("█");
+            printf("%s", ALIVE_CHR);
         else
-            printf(".");
+            printf("%s", DEAD_CHR);
 
         n++;
         c++;
