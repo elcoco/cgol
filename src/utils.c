@@ -28,24 +28,28 @@ int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov) {
 }
 
 void print_usage() {
-    printf("Seagull :: Game of life written in sea!\n");
-    printf("\nMandatory arguments:\n");
-    printf("    -f SEED_FILE\n");
+    printf("Seagull :: Game of life written in C!\n");
+    //printf("\nMandatory arguments:\n");
     printf("\nOptional arguments:\n");
-    printf("    -s SPEED_MS, Default=1000\n");
+    printf("    -f SEED_FILE  Set seed file\n");
+    printf("    -s SPEED_MS   Transition speed, Default=1000\n");
+    printf("    -r            Set random seed\n");
 }
 
 Args* parse_args(int argc, char** argv) {
     Args* args = (Args*)malloc(sizeof(Args));
     int option;
 
-    while((option = getopt(argc, argv, "f:s:")) != -1){ //get option from the getopt() method
+    while((option = getopt(argc, argv, "f:s:r")) != -1){ //get option from the getopt() method
         switch (option) {
             case 'f':
                args->seed_path = strdup(optarg);
                break;
             case 's':
                args->speed_ms = atoi(optarg) * 1000;
+               break;
+            case 'r':
+               args->random = 1;
                break;
             case ':': 
                 printf("option needs a value\n"); 
@@ -59,8 +63,9 @@ Args* parse_args(int argc, char** argv) {
         print_usage();
         return NULL;
     }
-    if (!args->seed_path) {
-        printf("Please specify seed file.\n");
+    if (!(args->seed_path || args->random)) {
+        printf("Please specify seed source!\n");
+        print_usage();
         return NULL;
     }
     return args;

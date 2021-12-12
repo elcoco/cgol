@@ -12,7 +12,7 @@
 #define DEFAULT_SPEED_MS 1000000
 
 
-/* TODO wrap nodes in matrix struct so we can save dimensions and stuff
+/* DONE wrap nodes in matrix struct so we can save dimensions and stuff
  * TODO random seed generator
  * TODO check if patern is too big for matrix
  */
@@ -67,20 +67,25 @@ int8_t main(int argc, char** argv) {
     if (! args->speed_ms)
         args->speed_ms = DEFAULT_SPEED_MS;
 
-    Node** nodes = init_nodes(matrix_width, matrix_height);
-
-    // read seed and write to matrix
+    Matrix* m = init_matrix(matrix_width, matrix_height);
     Seed* seed = init_seed(matrix_width, matrix_height);
-    if (seed->read_file(seed, args->seed_path) < 0)
+
+    if (args->seed_path) {
+        if (seed->read_file(seed, args->seed_path) < 0)
+            return 1;
+
+    } else if (args->random) {
+        printf("Not implemented!\n");
         return 1;
-    else
-        seed->to_matrix(seed, nodes);
+    }
+
+    seed->to_matrix(seed, m);
 
     while (1) {
-        print_matrix(nodes, matrix_width, matrix_height);
+        print_matrix(m);
         printf("Generation: %d\n", gen_counter);
 
-        evolve(nodes);
+        evolve(m->nodes);
         gen_counter++;
         usleep(args->speed_ms);
     }

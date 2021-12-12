@@ -33,8 +33,9 @@ struct Seed {
     char** data;
     
     int(*read_file)(Seed* self, char* path);
-    int(*to_matrix)(Seed* self, Node** nodes);
+    int(*to_matrix)(Seed* self, Matrix* m);
     void(*print_seed)(Seed* self);
+    void(*read_random)(Seed* self);
 };
 
 Seed* init_seed(int term_x, int term_y);

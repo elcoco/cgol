@@ -1,5 +1,10 @@
 # Seagull
 
+## Compile and run
+
+    make
+    ./seagull -s 500 -f seeds/koksgalaxy.cells
+
 ## Seed files
 Seed files can be found in the *seeds* dir in the repo.  
 

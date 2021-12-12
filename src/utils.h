@@ -10,6 +10,7 @@
 typedef struct {
     char* seed_path;
     int speed_ms;
+    int random;
 } Args;
 
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov);

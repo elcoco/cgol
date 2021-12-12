@@ -47,9 +47,10 @@ void print_seed(Seed* self) {
     }
 }
 
-int to_matrix(Seed* self, Node** nodes) {
+int to_matrix(Seed* self, Matrix* m) {
     /* copy data from seed file into matrix */
     char** dptr = self->data;
+    Node** nodes = m->nodes;
 
     for (int y=0 ; y<self->max_y ; y++, dptr++) {
         char* c = *dptr;
@@ -68,6 +69,23 @@ int to_matrix(Seed* self, Node** nodes) {
     }
 }
 
+uint16_t get_rand(uint16_t lower, uint16_t upper) {
+    return (rand() % (upper - lower + 1)) + lower;
+}
+
+void read_random(Seed* self) {
+    /*
+    char** c = self->data;
+    
+    for (int i=0 ; i<(self->term_x*self->term_y) ; i++, c++) {
+        c = (get_rand(0, 1)) ? 'O' : '.';
+        //printf("bver %c\n", *c);
+    }
+    */
+
+    
+}
+
 Seed* init_seed(int term_x, int term_y) {
     /* Create seed struct and connect all the func pointers */
     Seed* seed = (Seed*)malloc(sizeof(Seed));
@@ -75,6 +93,7 @@ Seed* init_seed(int term_x, int term_y) {
     seed->read_file = &read_file;
     seed->to_matrix = &to_matrix;
     seed->print_seed = &print_seed;
+    seed->read_random = &read_random;
 
     seed->max_x = 0;
     seed->max_y = 0;

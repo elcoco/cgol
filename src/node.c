@@ -39,13 +39,13 @@ void print(Node* self) {
     printf("%2d\n",   self->se->index);
 }
 
-void print_matrix(Node** nodes, uint32_t xlim, uint32_t ylim) {
+void print_matrix(Matrix* m) {
     /* print out linked list as a matrix */
     uint32_t c = 0;
-    Node** n = nodes;
+    Node** n = m->nodes;
 
     while (*n) {
-        if ((c % xlim) == 0)
+        if ((c % m->max_x) == 0)
             printf("\n");
 
         if ((*n)->state)
@@ -95,4 +95,12 @@ Node** init_nodes(int xlim, int ylim) {
     }
 
     return nodes;
+}
+
+Matrix* init_matrix(int max_x, int max_y) {
+    Matrix* m = (Matrix*)malloc(sizeof(Matrix));
+    m->nodes = init_nodes(max_x, max_y);
+    m->max_x = max_x;
+    m->max_y = max_y;
+    return m;
 }
