@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread
+CFLAGS = -g -pthread
 BUILD_DIR = build
 BIN_DIR = .
 SRC_DIR = src

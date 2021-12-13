@@ -61,6 +61,8 @@ void evolve(Node** nodes) {
 
 void set_defaults(State* state) {
     state->speed_ms = DEFAULT_SPEED_MS;
+    //state->seed_path = NULL;
+    state->set_random = 0;
     state->is_paused = 0;
     state->is_stopped = 0;
     state->set_wrapping = 0;
@@ -98,46 +100,50 @@ int main(int argc, char** argv) {
     int matrix_height = w.ws_row -3;
     int matrix_width = w.ws_col;
 
-    State* state;
-    set_defaults(state);
+    State state;
+    set_defaults(&state);
 
     // parse arguments
-    if (parse_args(state, argc, argv) < 0)
+    if (parse_args(&state, argc, argv) < 0)
         return 1;
 
     // create matrix
-    Matrix* m = init_matrix(matrix_width, matrix_height);
-    m->edge_policy = (state->set_wrapping) ? EP_WRAP : EP_STOP;
+    Matrix* m = init_matrix(MATRIX_WIDTH, MATRIX_HEIGHT);
+    m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
-    Seed* s = init_seed(matrix_width, matrix_height);
+    ViewPort* vp = m->get_viewport(m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
 
-    if (state->seed_path) {
-        if (s->read_file(s, state->seed_path) < 0)
+    Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
+
+    if (state.seed_path) {
+        if (s->read_file(s, state.seed_path) < 0)
             return 1;
 
-    } else if (state->set_random) {
+    } else if (state.set_random) {
         printf("Not implemented!\n");
         return 1;
     }
 
     // write seed to matrix
     s->to_matrix(s, m);
+    printf("xoffset: %d, yoffset: %d\n", s->x_offset, s->y_offset);
 
     pthread_t inp_thread;
     //pthread_create(&inp_thread, NULL, input_thread, (void*)state);
 
-    while (!state->is_stopped) {
+    while (!state.is_stopped) {
 
-        m->print_matrix(m);
-        printf("Generation: %d | Paused: %d\n", gen_counter, state->is_paused);
+        vp->print_viewport(vp);
+        //m->print_matrix(m);
+        printf("Generation: %d | Paused: %d\n", gen_counter, state.is_paused);
 
-        while (state->is_paused)
+        while (state.is_paused)
             usleep(PAUSED_INTERVAL);
 
         evolve(m->nodes);
         gen_counter++;
-        usleep(state->speed_ms);
+        usleep(state.speed_ms);
     }
 
     pthread_join(inp_thread, NULL);

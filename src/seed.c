@@ -36,6 +36,7 @@ int read_file(Seed* self, char* path) {
     self->y_offset = (self->term_y-self->max_y) /2;
 
     fclose(fp);
+    return 0;
 }
 
 void print_seed(Seed* self) {
@@ -67,6 +68,7 @@ int to_matrix(Seed* self, Matrix* m) {
             n->state = 1;
         } 
     }
+    return 0;
 }
 
 int get_rand(int lower, int upper) {
@@ -102,4 +104,5 @@ Seed* init_seed(int term_x, int term_y) {
     seed->term_x = term_x;
     seed->term_y = term_y;
     seed->data = (char**)malloc(DATA_SIZE*sizeof(char*));
+    return seed;
 }

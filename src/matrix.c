@@ -39,26 +39,6 @@ void print(Node* self) {
     printf("%2d\n",   self->se->index);
 }
 
-void print_matrix(Matrix* self) {
-    /* print out nodes as a matrix */
-    int c = 0;
-    Node** n = self->nodes;
-
-    while (*n) {
-        if ((c % self->max_x) == 0)
-            printf("\n");
-
-        if ((*n)->state)
-            printf("%s", ALIVE_CHR);
-        else
-            printf("%s", DEAD_CHR);
-
-        n++;
-        c++;
-    }
-    printf("\n");
-}
-
 Node** init_nodes(Matrix* self) {
     /* Function is called by init_matrix() function to initialize nodes */
     Node** nodes = (Node**)malloc(((self->max_x*self->max_y)+1)*sizeof(Node*));
@@ -94,6 +74,69 @@ Node** init_nodes(Matrix* self) {
     return nodes;
 }
 
+void print_viewport(ViewPort* self) {
+    /* print out nodes as a matrix */
+    int c = 0;
+    Node** n = self->nodes;
+    printf("bever\n");
+
+    while (*n) {
+        if ((c % self->max_x) == 0)
+            printf("\n");
+
+        if ((*n)->state)
+            printf("%s", ALIVE_CHR);
+        else
+            printf("%s", DEAD_CHR);
+
+        n++;
+        c++;
+    }
+    printf("\n");
+}
+
+ViewPort* get_viewport(Matrix* self, int origin_x, int origin_y, int max_x, int max_y) {
+    /* Viewport is the subset of data that is shown on screen.
+     * This enables the possibility of panning and zooming in the future
+     * origin is in middle of viewport
+     */
+    ViewPort* vp = (ViewPort*)malloc(sizeof(ViewPort));
+    vp->max_x = max_x;
+    vp->max_y = max_y;
+    vp->origin_x = origin_x;
+    vp->origin_y = origin_y;
+    vp->nodes = (Node**)malloc(((max_x*max_y)+1)*sizeof(Node*));
+
+    // connect func pointers
+    vp->print_viewport = &print_viewport;
+
+    //int loc = *(nodes + (get_loc(max_x, max_y, 0, origin_x, origin_y, self->edge_policy))); 
+
+    Node** vp_n = vp->nodes;
+
+    // find top left corner coordinates
+    int start_x = origin_x - (max_x/2);
+    int start_y = origin_y - (max_y/2);
+
+    // Add nodes from matrix to vp->nodes, check for oob
+    for (int y=0 ; y<max_y ; y++) {
+        int loc = get_loc(self->max_x, self->max_y, 0, start_x, start_y+y, self->edge_policy); 
+
+        // TODO this will probably be a problem when we enable panning since there is no solution for out of bound problem
+        for (int i=loc ; i<(loc+max_x) ; i++, vp_n++) {
+            if (i < (self->max_x * self->max_y))
+                *vp_n = *(self->nodes+i);
+            else
+                printf("OUTOFBOUNDS do something!!!!\n");
+        }
+        printf("loc: %d\n", loc);
+
+    }
+
+    self->vp = vp;
+    return self->vp;
+}
+
 Matrix* init_matrix(int max_x, int max_y) {
     /* Setup matrix struct, this contains the nodes and data about matrix like size */
     Matrix* m = (Matrix*)malloc(sizeof(Matrix));
@@ -102,7 +145,7 @@ Matrix* init_matrix(int max_x, int max_y) {
     m->edge_policy = EP_WRAP;  // default
 
     // connect func pointers
-    m->print_matrix = &print_matrix;
     m->init_nodes = &init_nodes;
+    m->get_viewport = &get_viewport;
     return m;
 }

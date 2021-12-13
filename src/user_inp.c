@@ -57,4 +57,5 @@ int test(int argc, char *argv[]) {
         /* do some work */
     }
     (void)get_chr(); /* consume the character */
+    return 0;
 }
