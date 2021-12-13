@@ -1,5 +1,5 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef MATRIX_H
+#define MATRIX_H
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,6 +14,9 @@ typedef struct Node Node;
 struct Node {
     // on or off state
     int state;
+
+    // how many generations are we in this state, can be used to fancy coloring of cells
+    int age;
 
     // All rules need to be applied at the same time on all nodes
     // So we need to make a backup of the state while itering over nodes
@@ -39,9 +42,9 @@ struct Node {
 // what to do when a patern moves beyond it's borders
 typedef enum EdgePolicy EdgePolicy;
 enum EdgePolicy {
-    WRAP,
-    STOP,
-    DISAPEAR
+    EP_WRAP,
+    EP_STOP,
+    EP_DISAPEAR
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff

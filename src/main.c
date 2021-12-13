@@ -6,7 +6,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "node.h"
+#include "matrix.h"
 #include "seed.h"
 #include "user_inp.h"
 
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
 
     // create matrix
     Matrix* m = init_matrix(matrix_width, matrix_height);
-    m->edge_policy = (state->set_wrapping) ? WRAP : STOP;
+    m->edge_policy = (state->set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
     Seed* s = init_seed(matrix_width, matrix_height);

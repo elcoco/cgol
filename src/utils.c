@@ -15,7 +15,7 @@ int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy ed
     int destx = curx + xmov;
     int desty = cury + ymov;
 
-    if (edge_policy == WRAP) {
+    if (edge_policy == EP_WRAP) {
         // wrap matrix sides
         if (destx > (xlim-1)) {
             destx = destx - xlim;
@@ -30,7 +30,7 @@ int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy ed
             desty = ylim - (0 - desty);
         }
 
-    } else if (edge_policy == STOP) {
+    } else if (edge_policy == EP_STOP) {
         // don't move beyond matrix limits
         if (destx > (xlim-1)) {
             destx = xlim-((xlim-1)-destx);

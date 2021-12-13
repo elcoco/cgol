@@ -1,4 +1,4 @@
-#include "node.h"
+#include "matrix.h"
 
 
 int count_neighbours(Node* self) {
@@ -99,7 +99,7 @@ Matrix* init_matrix(int max_x, int max_y) {
     Matrix* m = (Matrix*)malloc(sizeof(Matrix));
     m->max_x = max_x;
     m->max_y = max_y;
-    m->edge_policy = WRAP;  // default
+    m->edge_policy = EP_WRAP;  // default
 
     // connect func pointers
     m->print_matrix = &print_matrix;

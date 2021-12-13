@@ -6,9 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "node.h"
+#include "matrix.h"
 
-// forward declaring type from node.h
+// forward declaring type from matrix.h
 typedef enum EdgePolicy EdgePolicy;
 
 typedef struct {

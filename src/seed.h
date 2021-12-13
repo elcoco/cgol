@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "node.h"
+#include "matrix.h"
 #include "utils.h"
 
 #define DATA_SIZE 2000
