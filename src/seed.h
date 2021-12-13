@@ -1,7 +1,6 @@
 #ifndef SEED_H
 #define SEED_H
 
-#include <stdint.h>         // uint types
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

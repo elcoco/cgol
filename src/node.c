@@ -1,7 +1,7 @@
 #include "node.h"
 
 
-int8_t count_neighbours(Node* self) {
+int count_neighbours(Node* self) {
     // count active neighbours
     int neighbours = 0;
     if (self->nw && self->nw->state)
@@ -40,8 +40,8 @@ void print(Node* self) {
 }
 
 void print_matrix(Matrix* self) {
-    /* print out linked list as a matrix */
-    uint32_t c = 0;
+    /* print out nodes as a matrix */
+    int c = 0;
     Node** n = self->nodes;
 
     while (*n) {
@@ -59,12 +59,13 @@ void print_matrix(Matrix* self) {
     printf("\n");
 }
 
-Node** init_nodes(int max_x, int max_y) {
-    //create_nodes(rn, max_x*max_y, 0);
-    Node** nodes = (Node**)malloc(((max_x*max_y)+1)*sizeof(Node*));
+Node** init_nodes(Matrix* self) {
+    /* Function is called by init_matrix() function to initialize nodes */
+    Node** nodes = (Node**)malloc(((self->max_x*self->max_y)+1)*sizeof(Node*));
+    self->nodes = nodes;
 
     // create nodes
-    for (int i=0 ; i<(max_x*max_y) ; i++) {
+    for (int i=0 ; i<(self->max_x*self->max_y) ; i++) {
         Node* n = (Node*)malloc(sizeof(Node));
         n->index = i;
         n->print = &print;
@@ -73,35 +74,35 @@ Node** init_nodes(int max_x, int max_y) {
     }
 
     // terminate array
-    nodes[(max_x*max_y)+1] = NULL;
+    nodes[(self->max_x*self->max_y)+1] = NULL;
 
     // define nodes orientation in physical space
     // link all neighbours, do wrapping in get_loc()
-    for (int i=0 ; i<(max_x*max_y) ; i++) {
+    for (int i=0 ; i<(self->max_x*self->max_y) ; i++) {
         Node* n = *(nodes+i);
-        n->nw = *(nodes + (get_loc(max_x, max_y, i, -1, -1))); 
-        n->n  = *(nodes + (get_loc(max_x, max_y, i,  0, -1))); 
-        n->ne = *(nodes + (get_loc(max_x, max_y, i,  1, -1))); 
+        n->nw = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, -1, self->edge_policy))); 
+        n->n  = *(nodes + (get_loc(self->max_x, self->max_y, i,  0, -1, self->edge_policy))); 
+        n->ne = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, -1, self->edge_policy))); 
 
-        n->w  = *(nodes + (get_loc(max_x, max_y, i, -1, 0))); 
-        n->e  = *(nodes + (get_loc(max_x, max_y, i,  1, 0))); 
+        n->w  = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, 0,  self->edge_policy))); 
+        n->e  = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, 0,  self->edge_policy))); 
 
-        n->sw = *(nodes + (get_loc(max_x, max_y, i, -1, 1))); 
-        n->s  = *(nodes + (get_loc(max_x, max_y, i,  0, 1))); 
-        n->se = *(nodes + (get_loc(max_x, max_y, i,  1, 1))); 
-
-        //int loc = get_loc(max_x, max_y, i, 1, 1);
-        //printf("search: %d, found %d (%d:%d)\n", i, n->nw->index, max_x, max_y);
+        n->sw = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, 1,  self->edge_policy))); 
+        n->s  = *(nodes + (get_loc(self->max_x, self->max_y, i,  0, 1,  self->edge_policy))); 
+        n->se = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, 1,  self->edge_policy))); 
     }
-
     return nodes;
 }
 
 Matrix* init_matrix(int max_x, int max_y) {
+    /* Setup matrix struct, this contains the nodes and data about matrix like size */
     Matrix* m = (Matrix*)malloc(sizeof(Matrix));
-    m->nodes = init_nodes(max_x, max_y);
     m->max_x = max_x;
     m->max_y = max_y;
-    m->print_matrix = print_matrix;
+    m->edge_policy = WRAP;  // default
+
+    // connect func pointers
+    m->print_matrix = &print_matrix;
+    m->init_nodes = &init_nodes;
     return m;
 }

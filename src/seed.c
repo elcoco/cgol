@@ -61,7 +61,7 @@ int to_matrix(Seed* self, Matrix* m) {
                 continue;
 
             // Translate terminal location to index in nodes array
-            int loc = get_loc(self->term_x, self->term_y, 0, x+self->x_offset, y+self->y_offset);
+            int loc = get_loc(self->term_x, self->term_y, 0, x+self->x_offset, y+self->y_offset, m->edge_policy);
             printf("[%c] x=%d, y=%d, loc=%d\n", *c, x, y, loc);
             Node* n = *(nodes+loc);
             n->state = 1;
@@ -69,7 +69,7 @@ int to_matrix(Seed* self, Matrix* m) {
     }
 }
 
-uint16_t get_rand(uint16_t lower, uint16_t upper) {
+int get_rand(int lower, int upper) {
     return (rand() % (upper - lower + 1)) + lower;
 }
 

@@ -1,20 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>         // uint types
 #include <string.h>
+#include <pthread.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 #include "node.h"
 #include "seed.h"
+#include "user_inp.h"
 
 #define DEFAULT_SPEED_MS 1000000
+#define PAUSED_INTERVAL 1000
+
+#define EXIT_ERROR -1
 
 
 /* DONE wrap nodes in matrix struct so we can save dimensions and stuff
  * TODO random seed generator
  * TODO check if patern is too big for matrix
+ * TODO use escape codes to replace lines in terminal
+ * TODO use a thread to listen for user input
+ * DONE make wrapping optional
+ * TODO matrix should be able to be bigger than viewport
+ *      add viewport dimensions to matrix struct so we can take a subset to display
+ * TODO create ncuses ui.c
  */
 
 void evolve(Node** nodes) {
@@ -49,8 +59,38 @@ void evolve(Node** nodes) {
     return;
 }
 
-int8_t main(int argc, char** argv) {
-    uint32_t gen_counter = 0;
+void set_defaults(State* state) {
+    state->speed_ms = DEFAULT_SPEED_MS;
+    state->is_paused = 0;
+    state->is_stopped = 0;
+    state->set_wrapping = 0;
+}
+
+void* input_thread(void* state) {
+    State* s = (State*)state;
+    char c;
+
+    set_term_raw();
+    while (1) {
+        while (! has_data()) {
+        }
+
+        c = get_chr();
+
+        switch (c) {
+            case 'q':
+                s->is_stopped = 1;
+                printf("Exit thread\n");
+                return NULL;
+            case ' ':
+                s->is_paused = !s->is_paused;
+                break;
+        }
+    }
+}
+
+int main(int argc, char** argv) {
+    int gen_counter = 0;
 
     // get window size
     struct winsize w;
@@ -58,36 +98,48 @@ int8_t main(int argc, char** argv) {
     int matrix_height = w.ws_row -3;
     int matrix_width = w.ws_col;
 
+    State* state;
+    set_defaults(state);
+
     // parse arguments
-    Args* args = parse_args(argc, argv);
-    if (!args)
+    if (parse_args(state, argc, argv) < 0)
         return 1;
 
-    // set some defaults
-    if (! args->speed_ms)
-        args->speed_ms = DEFAULT_SPEED_MS;
-
+    // create matrix
     Matrix* m = init_matrix(matrix_width, matrix_height);
+    m->edge_policy = (state->set_wrapping) ? WRAP : STOP;
+    m->init_nodes(m);
+
     Seed* s = init_seed(matrix_width, matrix_height);
 
-    if (args->seed_path) {
-        if (s->read_file(s, args->seed_path) < 0)
+    if (state->seed_path) {
+        if (s->read_file(s, state->seed_path) < 0)
             return 1;
 
-    } else if (args->random) {
+    } else if (state->set_random) {
         printf("Not implemented!\n");
         return 1;
     }
 
+    // write seed to matrix
     s->to_matrix(s, m);
 
-    while (1) {
+    pthread_t inp_thread;
+    //pthread_create(&inp_thread, NULL, input_thread, (void*)state);
+
+    while (!state->is_stopped) {
+
         m->print_matrix(m);
-        printf("Generation: %d\n", gen_counter);
+        printf("Generation: %d | Paused: %d\n", gen_counter, state->is_paused);
+
+        while (state->is_paused)
+            usleep(PAUSED_INTERVAL);
 
         evolve(m->nodes);
         gen_counter++;
-        usleep(args->speed_ms);
+        usleep(state->speed_ms);
     }
+
+    pthread_join(inp_thread, NULL);
     return 0;
 }

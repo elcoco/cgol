@@ -1,24 +1,23 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include <stdint.h>         // uint types
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "utils.h"
 
 #define ALIVE_CHR "█"
-#define DEAD_CHR  "."
+#define DEAD_CHR  " "
 
 // Node struct represents a cell in the matrix
 typedef struct Node Node;
 struct Node {
     // on or off state
-    int8_t state;
+    int state;
 
     // All rules need to be applied at the same time on all nodes
     // So we need to make a backup of the state while itering over nodes
-    int8_t tmp_state;
+    int tmp_state;
 
     // only for debugging
     int32_t index;
@@ -33,8 +32,16 @@ struct Node {
     Node* se;
     Node* sw;
 
-    int8_t(*count_neighbours)(Node* self); 
+    int(*count_neighbours)(Node* self); 
     void(*print)(Node* self);
+};
+
+// what to do when a patern moves beyond it's borders
+typedef enum EdgePolicy EdgePolicy;
+enum EdgePolicy {
+    WRAP,
+    STOP,
+    DISAPEAR
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff
@@ -43,11 +50,12 @@ struct Matrix {
     Node** nodes;
     int max_x;
     int max_y;
+    EdgePolicy edge_policy;
+
     void(*print_matrix)(Matrix* m);
+    Node**(*init_nodes)(Matrix* m);
 };
 
-
-Node** init_nodes(int xlim, int ylim);
 Matrix* init_matrix(int max_x, int max_y);
 
 #endif
