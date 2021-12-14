@@ -12,6 +12,7 @@
 #define MATRIX_WIDTH  1000
 #define MATRIX_HEIGHT 1000
 
+
 // Node struct represents a cell in the matrix
 typedef struct Node Node;
 typedef enum   EdgePolicy EdgePolicy;
@@ -21,6 +22,10 @@ typedef struct Matrix Matrix;
 struct Node {
     // on or off state
     int state;
+
+    // Link to next node in linked list that only contains alive nodes.
+    Node* next;
+    Node* prev;
 
     // how many generations are we in this state, can be used to fancy coloring of cells
     int age;
@@ -69,6 +74,12 @@ struct ViewPort {
 // Matrix wraps nodes and contains info about dimensions and stuff
 struct Matrix {
     Node** nodes;
+
+    // linked list that contain only alive nodes, used for fast itering of cells between generations
+    Node** head;
+
+    int alive_nodes;
+
     int max_x;
     int max_y;
     EdgePolicy edge_policy;
@@ -78,8 +89,11 @@ struct Matrix {
 
     Node**(*init_nodes)(Matrix* m);
     ViewPort*(*get_viewport)(Matrix* m, int origin_x, int origin_y, int max_x, int max_y);
+    void(*insert_alive_node)(Matrix* self, Node* node);
+    void(*remove_alive_node)(Matrix* self, Node* node);
 };
 
 Matrix* init_matrix(int max_x, int max_y);
+void print_linked_list(Node* n);
 
 #endif

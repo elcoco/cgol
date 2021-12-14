@@ -66,6 +66,9 @@ int to_matrix(Seed* self, Matrix* m) {
             printf("[%c] x=%d, y=%d, loc=%d\n", *c, x, y, loc);
             Node* n = *(nodes+loc);
             n->state = 1;
+
+            // add node to linked list, which is used for faster iteration inbetween generations
+            m->insert_alive_node(m, n);
         } 
     }
     return 0;

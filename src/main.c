@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -25,36 +26,82 @@
  * TODO matrix should be able to be bigger than viewport
  *      add viewport dimensions to matrix struct so we can take a subset to display
  * TODO create ncuses ui.c
+ * DONE keep array of alive cells. By only checking these+neighbours we greatly improve speed
+ * BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
  */
 
-void evolve(Node** nodes) {
-    /* Do one tick, check all cells for changes */
-    Node** ptr = nodes;
-    Node* n = *ptr;
+void evolve(Matrix* m) {
+    /* Do one tick, check all cells for changes
+     * Instead of checking all cells we only track the alive cells and it's neighbouring dead cells. */
+
+    assert(*(m->head) != NULL);
+    Node* n = *(m->head);
 
     while (n) {
         // record changed state in tmp_state so we keep a clean state to test against
-        n->tmp_state = 0;
-
-        // if dead cell has 3 neighbours -> alive
-        if (!n->state && n->count_neighbours(n) == 3)
-            n->tmp_state = 1;
 
         // if alive cell has 2>cell>3 neighours, stay alive
-        if (n->state && n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3)
+        if (n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3) {
             n->tmp_state = 1;
+        } else {
+            n->tmp_state = 0;
+        }
 
-        ptr++;
-        n = *ptr;
+        // Check all dead cells around this cell.
+        // If more than 3 alive neighbours -> a new cell is born.
+        if (!n->nw->state && !n->nw->tmp_state && n->nw->count_neighbours(n->nw) == 3) {
+            n->nw->tmp_state = 1;
+            m->insert_alive_node(m, n->nw);
+        }
+        if (!n->n->state && !n->n->tmp_state && n->n->count_neighbours(n->n) == 3) {
+            n->n->tmp_state = 1;
+            m->insert_alive_node(m, n->n);
+        }
+        if (!n->ne->state && !n->ne->tmp_state && n->ne->count_neighbours(n->ne) == 3) {
+            n->ne->tmp_state = 1;
+            m->insert_alive_node(m, n->ne);
+        }
+        if (!n->e->state && !n->e->tmp_state && n->e->count_neighbours(n->e) == 3) {
+            n->e->tmp_state = 1;
+            m->insert_alive_node(m, n->e);
+        }
+        if (!n->w->state && !n->w->tmp_state && n->w->count_neighbours(n->w) == 3) {
+            n->w->tmp_state = 1;
+            m->insert_alive_node(m, n->w);
+        }
+        if (!n->sw->state && !n->sw->tmp_state && n->sw->count_neighbours(n->sw) == 3) {
+            n->sw->tmp_state = 1;
+            m->insert_alive_node(m, n->sw);
+        }
+        if (!n->s->state && !n->s->tmp_state && n->s->count_neighbours(n->s) == 3) {
+            n->s->tmp_state = 1;
+            m->insert_alive_node(m, n->s);
+        }
+        if (!n->se->state && !n->se->tmp_state && n->se->count_neighbours(n->se) == 3) {
+            n->se->tmp_state = 1;
+            m->insert_alive_node(m, n->se);
+        }
+
+        n = n->next;
     }
 
+    print_linked_list(*m->head);
+
+    n = *(m->head);
+
     // propagating tmp state to current state
-    ptr = nodes;
-    n = *ptr;
     while (n) {
         n->state = n->tmp_state;
-        ptr++;
-        n = *ptr;
+
+        // remove the dead nodes
+        if (!n->state) {
+            Node* n_tmp = n;
+            n = n->next;
+            m->remove_alive_node(m, n_tmp);
+
+        } else {
+            n = n->next;
+        }
     }
     return;
 }
@@ -136,12 +183,12 @@ int main(int argc, char** argv) {
 
         vp->print_viewport(vp);
         //m->print_matrix(m);
-        printf("Generation: %d | Paused: %d\n", gen_counter, state.is_paused);
+        printf("Generation: %d | Paused: %d | alive_nodes: %d\n", gen_counter, state.is_paused, m->alive_nodes);
 
         while (state.is_paused)
             usleep(PAUSED_INTERVAL);
 
-        evolve(m->nodes);
+        evolve(m);
         gen_counter++;
         usleep(state.speed_ms);
     }

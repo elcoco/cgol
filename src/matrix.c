@@ -48,6 +48,8 @@ Node** init_nodes(Matrix* self) {
     for (int i=0 ; i<(self->max_x*self->max_y) ; i++) {
         Node* n = (Node*)malloc(sizeof(Node));
         n->index = i;
+        n->state = 0;
+        n->tmp_state = 0;
         n->print = &print;
         n->count_neighbours = &count_neighbours;
         nodes[i] = n;
@@ -78,7 +80,6 @@ void print_viewport(ViewPort* self) {
     /* print out nodes as a matrix */
     int c = 0;
     Node** n = self->nodes;
-    printf("bever\n");
 
     while (*n) {
         if ((c % self->max_x) == 0)
@@ -110,8 +111,6 @@ ViewPort* get_viewport(Matrix* self, int origin_x, int origin_y, int max_x, int 
     // connect func pointers
     vp->print_viewport = &print_viewport;
 
-    //int loc = *(nodes + (get_loc(max_x, max_y, 0, origin_x, origin_y, self->edge_policy))); 
-
     Node** vp_n = vp->nodes;
 
     // find top left corner coordinates
@@ -129,12 +128,69 @@ ViewPort* get_viewport(Matrix* self, int origin_x, int origin_y, int max_x, int 
             else
                 printf("OUTOFBOUNDS do something!!!!\n");
         }
-        printf("loc: %d\n", loc);
-
     }
 
     self->vp = vp;
     return self->vp;
+}
+
+void insert_alive_node(Matrix* self, Node* n) {
+    /* Insert a node at head of linked list.
+     * Head needs to be passed by double pointer to be able to replace it.
+     */
+    self->alive_nodes++;
+    Node** head = self->head;
+
+    if (!*head) {
+        // First node becomes the head node
+        *head = n;
+        n->next = NULL;
+        n->prev = NULL;
+
+    } else {
+        // Replace head node in linked list
+        Node* next_node = *head;
+        *head = n;
+        next_node->prev = *head;
+        (*head)->next = next_node;
+    }
+}
+
+void print_linked_list(Node* n) {
+    /* Print out full linked list for debugging */
+    int c = 0;
+    while (n) {
+        printf("[%3d] %d %p <- [%p] -> %p\n", c, n->index, n->prev, n, n->next);
+        c++;
+        n = n->next;
+    }
+}
+
+void remove_alive_node(Matrix* self, Node* n) {
+    /* Remove a node from linked list and reconnect the list */
+    self->alive_nodes--;
+
+    Node* n_prev = n->prev;
+    Node* n_next = n->next;
+    Node** head = self->head;
+
+    if (n_prev) {
+        n_prev->next = n_next;
+    } else {
+        // is new head
+        *head = n_next;
+        (*head)->prev = NULL;
+    }
+
+    if (n_next)
+        n_next->prev = n_prev;
+    else
+        // is tail node
+        n_prev->next = NULL;
+
+    // reset removed node links
+    n->next = NULL;
+    n->prev = NULL;
 }
 
 Matrix* init_matrix(int max_x, int max_y) {
@@ -143,9 +199,15 @@ Matrix* init_matrix(int max_x, int max_y) {
     m->max_x = max_x;
     m->max_y = max_y;
     m->edge_policy = EP_WRAP;  // default
+    m->alive_nodes = 0;
+
+    m->head = (Node**)malloc(sizeof(Node*));
+    *(m->head) = NULL;
 
     // connect func pointers
     m->init_nodes = &init_nodes;
     m->get_viewport = &get_viewport;
+    m->insert_alive_node = &insert_alive_node;
+    m->remove_alive_node = &remove_alive_node;
     return m;
 }
