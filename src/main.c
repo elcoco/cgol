@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
     while (!state.is_stopped) {
 
         vp->print_viewport(vp);
-        //m->print_matrix(m);
+        
         printf("Generation: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n", gen_counter, state.is_paused, m->alive_nodes, vp->origin_x, vp->origin_y);
 
         while (state.is_paused)
@@ -201,11 +201,6 @@ int main(int argc, char** argv) {
         evolve(m);
         gen_counter++;
         usleep(state.speed_ms);
-
-        //vp->free_viewport(vp);
-        //m->update_viewport(vp, (MATRIX_WIDTH/2)+1, (MATRIX_HEIGHT/2)+1, matrix_width, matrix_height);
-        i++;
-        vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+i, (MATRIX_HEIGHT/2)+i, matrix_width, matrix_height);
     }
 
     pthread_join(inp_thread, NULL);
