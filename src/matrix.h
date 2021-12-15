@@ -48,6 +48,7 @@ struct Node {
     Node* sw;
 
     int(*count_neighbours)(Node* self); 
+    int(*becomes_alive)(Node* self); 
     void(*print)(Node* self);
 };
 
@@ -61,14 +62,16 @@ enum EdgePolicy {
 // Represents the nodes that are visible on screen
 // Holds a subset of Matrix->nodes,
 struct ViewPort {
-    int max_x;
-    int max_y;
+    int size_x;
+    int size_y;
 
     int origin_x;
     int origin_y;
 
     Node** nodes;
     void(*print_viewport)(ViewPort* self);
+    void(*free_viewport)(ViewPort* self);
+    void(*update_viewport)(ViewPort* vp, Matrix* m, int origin_x, int origin_y, int size_x, int size_y);
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff
@@ -80,20 +83,20 @@ struct Matrix {
 
     int alive_nodes;
 
-    int max_x;
-    int max_y;
+    int size_x;
+    int size_y;
     EdgePolicy edge_policy;
 
     // data currently on screen
     ViewPort* vp;
 
     Node**(*init_nodes)(Matrix* m);
-    ViewPort*(*get_viewport)(Matrix* m, int origin_x, int origin_y, int max_x, int max_y);
+    ViewPort*(*init_viewport)(Matrix* m);
     void(*insert_alive_node)(Matrix* self, Node* node);
     void(*remove_alive_node)(Matrix* self, Node* node);
 };
 
-Matrix* init_matrix(int max_x, int max_y);
+Matrix* init_matrix(int size_x, int size_y);
 void print_linked_list(Node* n);
 
 #endif

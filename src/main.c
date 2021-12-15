@@ -23,11 +23,11 @@
  * TODO use escape codes to replace lines in terminal
  * TODO use a thread to listen for user input
  * DONE make wrapping optional
- * TODO matrix should be able to be bigger than viewport
+ * DONE matrix should be able to be bigger than viewport
  *      add viewport dimensions to matrix struct so we can take a subset to display
  * TODO create ncuses ui.c
  * DONE keep array of alive cells. By only checking these+neighbours we greatly improve speed
- * BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
+ * DONE BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
  */
 
 void evolve(Matrix* m) {
@@ -47,45 +47,52 @@ void evolve(Matrix* m) {
             n->tmp_state = 0;
         }
 
-        // Check all dead cells around this cell.
+        //assert(n->nw);
+        //assert(n->n);
+        //assert(n->ne);
+        //assert(n->w);
+        //assert(n->e);
+        //assert(n->sw);
+        //assert(n->s);
+        //assert(n->se);
+
+        // Check all dead cells around current cell.
         // If more than 3 alive neighbours -> a new cell is born.
-        if (!n->nw->state && !n->nw->tmp_state && n->nw->count_neighbours(n->nw) == 3) {
+        if (n->nw && n->nw->becomes_alive(n->nw)) {
             n->nw->tmp_state = 1;
             m->insert_alive_node(m, n->nw);
         }
-        if (!n->n->state && !n->n->tmp_state && n->n->count_neighbours(n->n) == 3) {
+        if (n->n && n->n->becomes_alive(n->n)) {
             n->n->tmp_state = 1;
             m->insert_alive_node(m, n->n);
         }
-        if (!n->ne->state && !n->ne->tmp_state && n->ne->count_neighbours(n->ne) == 3) {
+        if (n->ne && n->ne->becomes_alive(n->ne)) {
             n->ne->tmp_state = 1;
             m->insert_alive_node(m, n->ne);
         }
-        if (!n->e->state && !n->e->tmp_state && n->e->count_neighbours(n->e) == 3) {
+        if (n->e && n->e->becomes_alive(n->e)) {
             n->e->tmp_state = 1;
             m->insert_alive_node(m, n->e);
         }
-        if (!n->w->state && !n->w->tmp_state && n->w->count_neighbours(n->w) == 3) {
+        if (n->w && n->w->becomes_alive(n->w)) {
             n->w->tmp_state = 1;
             m->insert_alive_node(m, n->w);
         }
-        if (!n->sw->state && !n->sw->tmp_state && n->sw->count_neighbours(n->sw) == 3) {
+        if (n->sw && n->sw->becomes_alive(n->sw)) {
             n->sw->tmp_state = 1;
             m->insert_alive_node(m, n->sw);
         }
-        if (!n->s->state && !n->s->tmp_state && n->s->count_neighbours(n->s) == 3) {
+        if (n->s && n->s->becomes_alive(n->s)) {
             n->s->tmp_state = 1;
             m->insert_alive_node(m, n->s);
         }
-        if (!n->se->state && !n->se->tmp_state && n->se->count_neighbours(n->se) == 3) {
+        if (n->se && n->se->becomes_alive(n->se)) {
             n->se->tmp_state = 1;
             m->insert_alive_node(m, n->se);
         }
 
         n = n->next;
     }
-
-    print_linked_list(*m->head);
 
     n = *(m->head);
 
@@ -159,7 +166,8 @@ int main(int argc, char** argv) {
     m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
-    ViewPort* vp = m->get_viewport(m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
+    ViewPort* vp = m->init_viewport(m);
+    vp->update_viewport(vp, m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
 
     Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
 
@@ -178,12 +186,14 @@ int main(int argc, char** argv) {
 
     pthread_t inp_thread;
     //pthread_create(&inp_thread, NULL, input_thread, (void*)state);
+    //
+    int i = 0;
 
     while (!state.is_stopped) {
 
         vp->print_viewport(vp);
         //m->print_matrix(m);
-        printf("Generation: %d | Paused: %d | alive_nodes: %d\n", gen_counter, state.is_paused, m->alive_nodes);
+        printf("Generation: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n", gen_counter, state.is_paused, m->alive_nodes, vp->origin_x, vp->origin_y);
 
         while (state.is_paused)
             usleep(PAUSED_INTERVAL);
@@ -191,6 +201,11 @@ int main(int argc, char** argv) {
         evolve(m);
         gen_counter++;
         usleep(state.speed_ms);
+
+        //vp->free_viewport(vp);
+        //m->update_viewport(vp, (MATRIX_WIDTH/2)+1, (MATRIX_HEIGHT/2)+1, matrix_width, matrix_height);
+        i++;
+        vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+i, (MATRIX_HEIGHT/2)+i, matrix_width, matrix_height);
     }
 
     pthread_join(inp_thread, NULL);

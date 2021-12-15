@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include "assert.h"
 
 
 int count_neighbours(Node* self) {
@@ -39,39 +40,51 @@ void print(Node* self) {
     printf("%2d\n",   self->se->index);
 }
 
+int becomes_alive(Node *self) {
+    /* Returns true if cell should become alive
+     * Check all dead cells around this cell.
+     * If more than 3 alive neighbours -> a new cell is born.
+     */
+    if (self->state || self->tmp_state)
+        return 0;
+
+    return self->count_neighbours(self) == 3;
+}
+
 Node** init_nodes(Matrix* self) {
     /* Function is called by init_matrix() function to initialize nodes */
-    Node** nodes = (Node**)malloc(((self->max_x*self->max_y)+1)*sizeof(Node*));
+    Node** nodes = (Node**)malloc(((self->size_x*self->size_y)+1)*sizeof(Node*));
     self->nodes = nodes;
 
     // create nodes
-    for (int i=0 ; i<(self->max_x*self->max_y) ; i++) {
+    for (int i=0 ; i<(self->size_x*self->size_y) ; i++) {
         Node* n = (Node*)malloc(sizeof(Node));
         n->index = i;
         n->state = 0;
         n->tmp_state = 0;
         n->print = &print;
         n->count_neighbours = &count_neighbours;
+        n->becomes_alive = &becomes_alive;
         nodes[i] = n;
     }
 
     // terminate array
-    nodes[(self->max_x*self->max_y)+1] = NULL;
+    nodes[(self->size_x*self->size_y)+1] = NULL;
 
     // define nodes orientation in physical space
     // link all neighbours, do wrapping in get_loc()
-    for (int i=0 ; i<(self->max_x*self->max_y) ; i++) {
+    for (int i=0 ; i<(self->size_x*self->size_y) ; i++) {
         Node* n = *(nodes+i);
-        n->nw = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, -1, self->edge_policy))); 
-        n->n  = *(nodes + (get_loc(self->max_x, self->max_y, i,  0, -1, self->edge_policy))); 
-        n->ne = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, -1, self->edge_policy))); 
+        n->nw = *(nodes + (get_loc(self->size_x, self->size_y, i, -1, -1, self->edge_policy))); 
+        n->n  = *(nodes + (get_loc(self->size_x, self->size_y, i,  0, -1, self->edge_policy))); 
+        n->ne = *(nodes + (get_loc(self->size_x, self->size_y, i,  1, -1, self->edge_policy))); 
 
-        n->w  = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, 0,  self->edge_policy))); 
-        n->e  = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, 0,  self->edge_policy))); 
+        n->w  = *(nodes + (get_loc(self->size_x, self->size_y, i, -1, 0,  self->edge_policy))); 
+        n->e  = *(nodes + (get_loc(self->size_x, self->size_y, i,  1, 0,  self->edge_policy))); 
 
-        n->sw = *(nodes + (get_loc(self->max_x, self->max_y, i, -1, 1,  self->edge_policy))); 
-        n->s  = *(nodes + (get_loc(self->max_x, self->max_y, i,  0, 1,  self->edge_policy))); 
-        n->se = *(nodes + (get_loc(self->max_x, self->max_y, i,  1, 1,  self->edge_policy))); 
+        n->sw = *(nodes + (get_loc(self->size_x, self->size_y, i, -1, 1,  self->edge_policy))); 
+        n->s  = *(nodes + (get_loc(self->size_x, self->size_y, i,  0, 1,  self->edge_policy))); 
+        n->se = *(nodes + (get_loc(self->size_x, self->size_y, i,  1, 1,  self->edge_policy))); 
     }
     return nodes;
 }
@@ -82,7 +95,7 @@ void print_viewport(ViewPort* self) {
     Node** n = self->nodes;
 
     while (*n) {
-        if ((c % self->max_x) == 0)
+        if ((c % self->size_x) == 0)
             printf("\n");
 
         if ((*n)->state)
@@ -96,39 +109,49 @@ void print_viewport(ViewPort* self) {
     printf("\n");
 }
 
-ViewPort* get_viewport(Matrix* self, int origin_x, int origin_y, int max_x, int max_y) {
+void update_viewport(ViewPort* self, Matrix* m, int origin_x, int origin_y, int size_x, int size_y) {
+    /* update viewport parameters */
+    if (self->nodes != NULL) {
+        void* res = realloc(self->nodes, ((size_x*size_y)+1)*sizeof(Node*));
+    }
+    else
+        self->nodes = (Node**)malloc(((size_x*size_y)+1)*sizeof(Node*));
+
+    self->size_x = size_x;
+    self->size_y = size_y;
+    self->origin_x = origin_x;
+    self->origin_y = origin_y;
+
+    Node** vp_n = self->nodes;
+
+    // find top left corner coordinates
+    int start_x = origin_x - (size_x/2);
+    int start_y = origin_y - (size_y/2);
+
+    // Add nodes from matrix to self->nodes, check for oob
+    for (int y=0 ; y<size_y ; y++) {
+        int loc = get_loc(m->size_x, m->size_y, 0, start_x, start_y+y, m->edge_policy); 
+
+        // TODO this will probably be a problem when we enable panning since there is no solution for out of bound problem
+        for (int i=loc ; i<(loc+size_x) ; i++, vp_n++) {
+            if (i < (m->size_x * m->size_y))
+                *vp_n = *(m->nodes+i);
+            else
+                printf("OUTOFBOUNDS do something!!!!\n");
+        }
+    }
+}
+
+ViewPort* init_viewport(Matrix* self) {
     /* Viewport is the subset of data that is shown on screen.
      * This enables the possibility of panning and zooming in the future
      * origin is in middle of viewport
      */
     ViewPort* vp = (ViewPort*)malloc(sizeof(ViewPort));
-    vp->max_x = max_x;
-    vp->max_y = max_y;
-    vp->origin_x = origin_x;
-    vp->origin_y = origin_y;
-    vp->nodes = (Node**)malloc(((max_x*max_y)+1)*sizeof(Node*));
 
     // connect func pointers
     vp->print_viewport = &print_viewport;
-
-    Node** vp_n = vp->nodes;
-
-    // find top left corner coordinates
-    int start_x = origin_x - (max_x/2);
-    int start_y = origin_y - (max_y/2);
-
-    // Add nodes from matrix to vp->nodes, check for oob
-    for (int y=0 ; y<max_y ; y++) {
-        int loc = get_loc(self->max_x, self->max_y, 0, start_x, start_y+y, self->edge_policy); 
-
-        // TODO this will probably be a problem when we enable panning since there is no solution for out of bound problem
-        for (int i=loc ; i<(loc+max_x) ; i++, vp_n++) {
-            if (i < (self->max_x * self->max_y))
-                *vp_n = *(self->nodes+i);
-            else
-                printf("OUTOFBOUNDS do something!!!!\n");
-        }
-    }
+    vp->update_viewport = &update_viewport;
 
     self->vp = vp;
     return self->vp;
@@ -170,6 +193,10 @@ void remove_alive_node(Matrix* self, Node* n) {
     /* Remove a node from linked list and reconnect the list */
     self->alive_nodes--;
 
+    //assert(n);
+    //assert(n->prev);
+    //assert(n->next);
+
     Node* n_prev = n->prev;
     Node* n_next = n->next;
     Node** head = self->head;
@@ -193,11 +220,11 @@ void remove_alive_node(Matrix* self, Node* n) {
     n->prev = NULL;
 }
 
-Matrix* init_matrix(int max_x, int max_y) {
+Matrix* init_matrix(int size_x, int size_y) {
     /* Setup matrix struct, this contains the nodes and data about matrix like size */
     Matrix* m = (Matrix*)malloc(sizeof(Matrix));
-    m->max_x = max_x;
-    m->max_y = max_y;
+    m->size_x = size_x;
+    m->size_y = size_y;
     m->edge_policy = EP_WRAP;  // default
     m->alive_nodes = 0;
 
@@ -206,7 +233,7 @@ Matrix* init_matrix(int max_x, int max_y) {
 
     // connect func pointers
     m->init_nodes = &init_nodes;
-    m->get_viewport = &get_viewport;
+    m->init_viewport = &init_viewport;
     m->insert_alive_node = &insert_alive_node;
     m->remove_alive_node = &remove_alive_node;
     return m;
