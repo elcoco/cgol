@@ -7,9 +7,12 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <locale.h> // for utf8 in curses
+
 #include "matrix.h"
 #include "seed.h"
 #include "user_inp.h"
+#include "ui.h"
 
 #define DEFAULT_SPEED_MS 1000000
 #define PAUSED_INTERVAL 1000
@@ -28,6 +31,7 @@
  * TODO create ncuses ui.c
  * DONE keep array of alive cells. By only checking these+neighbours we greatly improve speed
  * DONE BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
+ * TODO when decreasing time, scale it. when below 100ms stepsize should be less
  */
 
 void evolve(Matrix* m) {
@@ -122,30 +126,44 @@ void set_defaults(State* state) {
     state->set_wrapping = 0;
 }
 
-void* input_thread(void* state) {
-    State* s = (State*)state;
-    char c;
-
-    set_term_raw();
-    while (1) {
-        while (! has_data()) {
-        }
-
-        c = get_chr();
-
+int check_user_input(State* state) {
+    /* check for user input, return 1 if there was input */
+    char c = getch();
+    if (c != ERR) {
         switch (c) {
             case 'q':
-                s->is_stopped = 1;
-                printf("Exit thread\n");
-                return NULL;
-            case ' ':
-                s->is_paused = !s->is_paused;
+                state->is_stopped = 1;
                 break;
+            case ' ':
+                state->is_paused = !state->is_paused;
+                break;
+            case '+':
+                state->speed_ms += 100000;
+                break;
+            case '-':
+                state->speed_ms -= 100000;
+                break;
+            default:
+                return 0;
         }
+
+        // flush chars
+        while (c != ERR)
+            c = getch();
+
+        return 1;
     }
+
+    return 0;
+}
+
+void non_blocking_sleep() {
+    // TODO write a non blocking sleep funtion that listens for user input and changed state
 }
 
 int main(int argc, char** argv) {
+
+    setlocale(LC_ALL, "");  // for UTF8 in curses
     int gen_counter = 0;
 
     // get window size
@@ -184,24 +202,28 @@ int main(int argc, char** argv) {
     s->to_matrix(s, m);
     printf("xoffset: %d, yoffset: %d\n", s->x_offset, s->y_offset);
 
-    //pthread_t inp_thread;
-    //pthread_create(&inp_thread, NULL, input_thread, (void*)state);
-    //
+    // init ncurses
+    init_ui();
 
     while (!state.is_stopped) {
+        if (check_user_input(&state))
+            continue;
 
-        vp->print_viewport(vp);
-        
-        printf("Generation: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n", gen_counter, state.is_paused, m->alive_nodes, vp->origin_x, vp->origin_y);
 
-        while (state.is_paused)
+        printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n", gen_counter, state.speed_ms/1000, state.is_paused, m->alive_nodes, vp->origin_x, vp->origin_y);
+
+        if (state.is_paused) {
             usleep(PAUSED_INTERVAL);
+            continue;
+        }
+
+        show_matrix(vp);
 
         evolve(m);
         gen_counter++;
         usleep(state.speed_ms);
     }
 
-    //pthread_join(inp_thread, NULL);
+    cleanup_ui();
     return 0;
 }

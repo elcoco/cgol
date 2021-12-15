@@ -59,3 +59,4 @@ int test(int argc, char *argv[]) {
     (void)get_chr(); /* consume the character */
     return 0;
 }
+

@@ -7,7 +7,7 @@
 #include "utils.h"
 
 #define ALIVE_CHR "█"
-#define DEAD_CHR  "."
+#define DEAD_CHR  " "
 
 #define MATRIX_WIDTH  1000
 #define MATRIX_HEIGHT 1000
