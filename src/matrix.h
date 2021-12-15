@@ -71,7 +71,7 @@ struct ViewPort {
     Node** nodes;
     void(*print_viewport)(ViewPort* self);
     void(*free_viewport)(ViewPort* self);
-    void(*update_viewport)(ViewPort* vp, Matrix* m, int origin_x, int origin_y, int size_x, int size_y);
+    int(*update_viewport)(ViewPort* vp, Matrix* m, int origin_x, int origin_y, int size_x, int size_y);
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff

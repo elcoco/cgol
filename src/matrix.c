@@ -109,10 +109,11 @@ void print_viewport(ViewPort* self) {
     printf("\n");
 }
 
-void update_viewport(ViewPort* self, Matrix* m, int origin_x, int origin_y, int size_x, int size_y) {
+int update_viewport(ViewPort* self, Matrix* m, int origin_x, int origin_y, int size_x, int size_y) {
     /* update viewport parameters */
     if (self->nodes != NULL) {
-        void* res = realloc(self->nodes, ((size_x*size_y)+1)*sizeof(Node*));
+        if (realloc(self->nodes, ((size_x*size_y)+1)*sizeof(Node*)) == NULL)
+            return -1;
     }
     else
         self->nodes = (Node**)malloc(((size_x*size_y)+1)*sizeof(Node*));
@@ -140,6 +141,7 @@ void update_viewport(ViewPort* self, Matrix* m, int origin_x, int origin_y, int 
                 printf("OUTOFBOUNDS do something!!!!\n");
         }
     }
+    return 1;
 }
 
 ViewPort* init_viewport(Matrix* self) {

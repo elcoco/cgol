@@ -184,10 +184,9 @@ int main(int argc, char** argv) {
     s->to_matrix(s, m);
     printf("xoffset: %d, yoffset: %d\n", s->x_offset, s->y_offset);
 
-    pthread_t inp_thread;
+    //pthread_t inp_thread;
     //pthread_create(&inp_thread, NULL, input_thread, (void*)state);
     //
-    int i = 0;
 
     while (!state.is_stopped) {
 
@@ -203,6 +202,6 @@ int main(int argc, char** argv) {
         usleep(state.speed_ms);
     }
 
-    pthread_join(inp_thread, NULL);
+    //pthread_join(inp_thread, NULL);
     return 0;
 }

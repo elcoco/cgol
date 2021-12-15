@@ -5,8 +5,6 @@ int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy ed
      * apply movement, and translate back to array index
      * Wrap edges if specified
      */
-    int wrapping = 0;
-
     // find xy coordinates
     int curx = cur_index % xlim;
     int cury = cur_index / xlim;
