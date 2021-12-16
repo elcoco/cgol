@@ -231,19 +231,24 @@ int main(int argc, char** argv) {
     init_ui();              // setup curses ui
 
     while (!state.is_stopped) {
-        if (state.is_pan_changed) {
-            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state.pan_x, (MATRIX_HEIGHT/2)+state.pan_y, matrix_width, matrix_height);
-            state.is_pan_changed = false;
+
+        if (non_blocking_sleep(state.speed_ms, &check_user_input, &state)) {
+            show_status(&state, m, vp);
+            show_matrix(vp);
         }
-
-        show_status(&state, m, vp);
-
-        if (!state.is_paused) {
+        else if (!state.is_paused) {
+            show_status(&state, m, vp);
             show_matrix(vp);
             evolve(m);
             state.gen_counter++;
         }
-        non_blocking_sleep(state.speed_ms, &check_user_input, &state);
+
+        if (state.is_pan_changed) {
+            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state.pan_x, (MATRIX_HEIGHT/2)+state.pan_y, matrix_width, matrix_height);
+            state.is_pan_changed = false;
+            show_status(&state, m, vp);
+            show_matrix(vp);
+        }
     }
     cleanup_ui();
     return 0;
