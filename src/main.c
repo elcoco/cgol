@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <sys/time.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -11,12 +10,10 @@
 
 #include "matrix.h"
 #include "seed.h"
-#include "user_inp.h"
 #include "ui.h"
 
 #define DEFAULT_SPEED_MS 1000000
 #define PAUSED_INTERVAL 1000
-#define CHECK_INTERVAL 10000
 
 #define EXIT_ERROR -1
 
@@ -24,15 +21,14 @@
 /* DONE wrap nodes in matrix struct so we can save dimensions and stuff
  * TODO random seed generator
  * TODO check if patern is too big for matrix
- * TODO use escape codes to replace lines in terminal
- * TODO use a thread to listen for user input
  * DONE make wrapping optional
  * DONE matrix should be able to be bigger than viewport
  *      add viewport dimensions to matrix struct so we can take a subset to display
- * TODO create ncuses ui.c
+ * DONE create ncuses ui.c
  * DONE keep array of alive cells. By only checking these+neighbours we greatly improve speed
  * DONE BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
- * TODO when decreasing time, scale it. when below 100ms stepsize should be less
+ * DONE when decreasing time, scale it. when below 100ms stepsize should be less
+ * TODO when pressing button, do execute command but dont skip the delay
  */
 
 void evolve(Matrix* m) {
@@ -119,8 +115,8 @@ void evolve(Matrix* m) {
 }
 
 void set_defaults(State* state) {
+    /* Set som default values for the state struct so we don't end up with garbage */
     state->speed_ms = DEFAULT_SPEED_MS;
-    //state->seed_path = NULL;
     state->set_random = 0;
     state->is_paused = 0;
     state->is_stopped = 0;
@@ -131,21 +127,10 @@ void set_defaults(State* state) {
     state->is_pan_changed = 0;
 }
 
-int get_speed_incr(int speed, int incr) {
-    if (speed > 100000)
-        return 10000;
-    if (speed > 1000)
-        return 1000;
-    if (speed > 100)
-        return 10;
+int check_user_input(void* arg) {
+    // state struct is passed as an argument to a callback, cast it to the proper type
+    State* state = arg;
 
-    return 1;
-
-
-
-}
-
-int check_user_input(State* state) {
     /* check for user input, return 1 if there was input */
     char c = getch();
     if (c != ERR) {
@@ -195,23 +180,6 @@ int check_user_input(State* state) {
     }
 
     return 0;
-}
-
-void non_blocking_sleep(int interval, State* state) {
-    /* Do a non blocking sleep that checks for user input */
-    struct timeval t_start, t_end;
-    gettimeofday(&t_start, NULL);
-
-    while (1) {
-        gettimeofday(&t_end, NULL);
-        if ((t_end.tv_sec*1000000 + t_end.tv_usec) - (t_start.tv_sec*1000000 + t_start.tv_usec) >= interval)
-            break;
-
-        if (check_user_input(state))
-            return;
-
-        usleep(CHECK_INTERVAL);
-    }
 }
 
 int main(int argc, char** argv) {
@@ -277,7 +245,7 @@ int main(int argc, char** argv) {
             evolve(m);
             state.gen_counter++;
         }
-        non_blocking_sleep(state.speed_ms, &state);
+        non_blocking_sleep(state.speed_ms, &check_user_input, &state);
     }
 
     cleanup_ui();

@@ -9,9 +9,9 @@ int init_ui() {
         return 0;
 
     init_colors();
-    curs_set(0);    // don't show cursor
-    cbreak();       // don't wait for enter
-    noecho();       // don't echo input to screen
+    curs_set(0);            // don't show cursor
+    cbreak();               // don't wait for enter
+    noecho();               // don't echo input to screen
     nodelay(stdscr, TRUE);  // don't block
 }
 
@@ -22,6 +22,7 @@ void cleanup_ui() {
 }
 
 void show_matrix(ViewPort* self) {
+    /* Put data from viewport into curses matrix */
     Node** nodes = self->nodes;
 
     attrset(COLOR_PAIR(1));
@@ -64,23 +65,20 @@ void init_colors() {
     }
 } 
 
-void* input_thread(void* state) {
-    /* Listen for user input */
-    State* s = (State*)state;
-    char c;
+void non_blocking_sleep(int interval, int(*callback)(void* arg), void* arg) {
+    /* Do a non blocking sleep that checks for user input */
+    struct timeval t_start, t_end;
+    gettimeofday(&t_start, NULL);
 
     while (1) {
-        c = getch();
+        gettimeofday(&t_end, NULL);
+        if ((t_end.tv_sec*1000000 + t_end.tv_usec) - (t_start.tv_sec*1000000 + t_start.tv_usec) >= interval)
+            break;
 
-        switch (c) {
-            case 'q':
-                s->is_stopped = 1;
-                //printf("Exit thread\n");
-                return NULL;
-            case ' ':
-                s->is_paused = !s->is_paused;
-                break;
-        }
+        if (callback(arg))
+            return;
+
+        usleep(CHECK_INTERVAL);
     }
-    addstr("Exit thread");
 }
+

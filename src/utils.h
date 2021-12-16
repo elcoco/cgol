@@ -27,5 +27,6 @@ typedef struct {
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);
 int parse_args(State* state, int argc, char** argv);
 void print_usage();
+int get_speed_incr(int speed, int incr);
 
 #endif

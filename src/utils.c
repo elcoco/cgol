@@ -94,3 +94,16 @@ int parse_args(State* state, int argc, char** argv) {
     }
     return 0;
 }
+
+int get_speed_incr(int speed, int incr) {
+    /* get new speed depending on range */
+    if (speed > 100000)
+        return 10000;
+    if (speed > 1000)
+        return 1000;
+    if (speed > 100)
+        return 10;
+
+    return 1;
+}
+

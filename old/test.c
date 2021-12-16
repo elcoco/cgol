@@ -49,3 +49,23 @@ int main() {
 
 
 }
+
+void* input_thread(void* state) {
+    /* Listen for user input */
+    State* s = (State*)state;
+    char c;
+
+    while (1) {
+        c = getch();
+
+        switch (c) {
+            case 'q':
+                s->is_stopped = 1;
+                return NULL;
+            case ' ':
+                s->is_paused = !s->is_paused;
+                break;
+        }
+    }
+    addstr("Exit thread");
+}
