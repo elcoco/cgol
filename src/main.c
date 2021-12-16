@@ -115,19 +115,19 @@ void evolve(Matrix* m) {
 }
 
 void set_defaults(State* state) {
-    /* Set som default values for the state struct so we don't end up with garbage */
+    /* Set some default values for the state struct so we don't end up with garbage */
     state->speed_ms = DEFAULT_SPEED_MS;
-    state->set_random = 0;
-    state->is_paused = 0;
-    state->is_stopped = 0;
-    state->set_wrapping = 0;
-    state->gen_counter = 0;
-    state->pan_x = 0;
-    state->pan_y = 0;
-    state->is_pan_changed = 0;
+    state->set_random     = false;
+    state->is_paused      = false;
+    state->is_stopped     = false;
+    state->set_wrapping   = false;
+    state->gen_counter    = 0;
+    state->pan_x          = 0;
+    state->pan_y          = 0;
+    state->is_pan_changed = false;
 }
 
-int check_user_input(void* arg) {
+bool check_user_input(void* arg) {
     // state struct is passed as an argument to a callback, cast it to the proper type
     State* state = arg;
 
@@ -136,54 +136,62 @@ int check_user_input(void* arg) {
     if (c != ERR) {
         switch (c) {
             case 'q':
-                state->is_stopped = 1;
+                state->is_stopped = true;
                 break;
             case ' ':
                 state->is_paused = !state->is_paused;
                 break;
             case '+':
-                state->speed_ms += get_speed_incr(state->speed_ms, 1);
+                state->speed_ms -= get_speed_incr(state->speed_ms, 1);
                 break;
             case '-':
-                state->speed_ms -= get_speed_incr(state->speed_ms, 1);
+                state->speed_ms += get_speed_incr(state->speed_ms, 1);
                 break;
             case 'h':
                 state->pan_x--;
-                state->is_pan_changed = 1;
+                state->is_pan_changed = true;
                 break;
             case 'l':
                 state->pan_x++;
-                state->is_pan_changed = 1;
+                state->is_pan_changed = true;
                 break;
             case 'k':
                 state->pan_y--;
-                state->is_pan_changed = 1;
+                state->is_pan_changed = true;
                 break;
             case 'j':
                 state->pan_y++;
-                state->is_pan_changed = 1;
+                state->is_pan_changed = true;
                 break;
             case '0':
                 state->pan_y = 0;
                 state->pan_x = 0;
-                state->is_pan_changed = 1;
+                state->is_pan_changed = true;
                 break;
             default:
-                return 0;
+                return false;
         }
 
         // flush chars
         while (c != ERR)
             c = getch();
 
-        return 1;
+        return true;
     }
+    return false;
+}
 
-    return 0;
+void show_status(State* state, Matrix* m, ViewPort* vp) {
+    printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n",
+            state->gen_counter,
+            state->speed_ms,
+            state->is_paused,
+            m->alive_nodes,
+            vp->origin_x,
+            vp->origin_y);
 }
 
 int main(int argc, char** argv) {
-
     setlocale(LC_ALL, "");  // for UTF8 in curses
 
     // get window size
@@ -208,37 +216,27 @@ int main(int argc, char** argv) {
     ViewPort* vp = m->init_viewport(m);
     vp->update_viewport(vp, m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
 
+    // seed is the initial state of the matrix, can be from file or random
     Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
 
     if (state.seed_path) {
         if (s->read_file(s, state.seed_path) < 0)
             return 1;
-
     } else if (state.set_random) {
         printf("Not implemented!\n");
         return 1;
     }
 
-    // write seed to matrix
-    s->to_matrix(s, m);
-    printf("xoffset: %d, yoffset: %d\n", s->x_offset, s->y_offset);
-
-    init_ui();
+    s->to_matrix(s, m);     // write seed to matrix
+    init_ui();              // setup curses ui
 
     while (!state.is_stopped) {
-
         if (state.is_pan_changed) {
             vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state.pan_x, (MATRIX_HEIGHT/2)+state.pan_y, matrix_width, matrix_height);
-            state.is_pan_changed = 0;
+            state.is_pan_changed = false;
         }
 
-        printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n",
-                state.gen_counter,
-                state.speed_ms,
-                state.is_paused,
-                m->alive_nodes,
-                vp->origin_x,
-                vp->origin_y);
+        show_status(&state, m, vp);
 
         if (!state.is_paused) {
             show_matrix(vp);
@@ -247,7 +245,6 @@ int main(int argc, char** argv) {
         }
         non_blocking_sleep(state.speed_ms, &check_user_input, &state);
     }
-
     cleanup_ui();
     return 0;
 }

@@ -65,7 +65,7 @@ void init_colors() {
     }
 } 
 
-void non_blocking_sleep(int interval, int(*callback)(void* arg), void* arg) {
+bool non_blocking_sleep(int interval, bool(*callback)(void* arg), void* arg) {
     /* Do a non blocking sleep that checks for user input */
     struct timeval t_start, t_end;
     gettimeofday(&t_start, NULL);
@@ -76,9 +76,10 @@ void non_blocking_sleep(int interval, int(*callback)(void* arg), void* arg) {
             break;
 
         if (callback(arg))
-            return;
+            return true;
 
         usleep(CHECK_INTERVAL);
     }
+    return false;
 }
 
