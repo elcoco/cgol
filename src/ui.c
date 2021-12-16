@@ -21,23 +21,41 @@ void cleanup_ui() {
     refresh();
 }
 
+int get_color(int age) {
+    int col = (age / 10) +1;
+    if (col > 8)
+        col = 8;
+    else if (col == 0)
+        col = 1;
+    return col;
+}
+
 void show_matrix(ViewPort* self) {
     /* Put data from viewport into curses matrix */
     Node** nodes = self->nodes;
 
-    attrset(COLOR_PAIR(1));
 
     for (int y=0 ; y<self->size_y ; y++) {
         for (int x=0 ; x<self->size_x ; x++) {
             Node* n = *(self->nodes + (x+(y*self->size_x)));
-            if (n->state)
+            if (n->state) {
+                attrset(COLOR_PAIR(1));
                 mvaddstr(y, x, ALIVE_CHR);
-            else
-                mvaddstr(y, x, DEAD_CHR);
+                attroff(COLOR_PAIR(1));
+            }
+            else {
+                if (n->was_alive) {
+                    attrset(COLOR_PAIR(8));
+                    mvaddstr(y, x, ALIVE_CHR);
+                    attroff(COLOR_PAIR(8));
+                }
+                else {
+                    mvaddstr(y, x, DEAD_CHR);
+                }
+            }
         }
     }
     refresh();
-    attroff(COLOR_PAIR(1));
     return;
 }
 

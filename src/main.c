@@ -15,9 +15,8 @@
 #define DEFAULT_SPEED_MS 1000000
 #define PAUSED_INTERVAL 1000
 #define DEFAULT_PAN_STEPS 5
+#define DEFAULT_PAN_BIG_STEPS 20
 #define STATUS_LINES 1
-
-#define EXIT_ERROR -1
 
 
 /* DONE wrap nodes in matrix struct so we can save dimensions and stuff
@@ -35,6 +34,7 @@
  * TODO update viewport dimensions on terminal resize
  * TODO indicate if matrix is in a stable state
  * TODO viewport xy offset should not go beyond limits
+ * BUG  Segfault when making terminal bigger, doesn't happen when making term smaller
  */
 
 void evolve(Matrix* m) {
@@ -47,11 +47,14 @@ void evolve(Matrix* m) {
     while (n) {
         // record changed state in tmp_state so we keep a clean state to test against
 
-        // if alive cell has 2>cell>3 neighours, stay alive
+        // if alive cell has 2<cell<3 neighours, stay alive
         if (n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3) {
             n->tmp_state = 1;
+            n->age++;
+            n->was_alive = true;
         } else {
             n->tmp_state = 0;
+            n->age = 0;
         }
 
         //assert(n->nw);
@@ -134,7 +137,6 @@ void set_defaults(State* state) {
     state->term_is_updated = false;
     state->term_x          = 0;
     state->term_y          = 0;
-
 }
 
 bool check_user_input(void* arg) {
@@ -173,6 +175,22 @@ bool check_user_input(void* arg) {
                 state->pan_y+=DEFAULT_PAN_STEPS;
                 state->is_pan_changed = true;
                 break;
+            case 'H':
+                state->pan_x-=DEFAULT_PAN_BIG_STEPS;
+                state->is_pan_changed = true;
+                break;
+            case 'L':
+                state->pan_x+=DEFAULT_PAN_BIG_STEPS;
+                state->is_pan_changed = true;
+                break;
+            case 'K':
+                state->pan_y-=DEFAULT_PAN_BIG_STEPS;
+                state->is_pan_changed = true;
+                break;
+            case 'J':
+                state->pan_y+=DEFAULT_PAN_BIG_STEPS;
+                state->is_pan_changed = true;
+                break;
             case 's':
                 state->is_paused = true;
                 state->do_step = true;
@@ -196,18 +214,34 @@ bool check_user_input(void* arg) {
 }
 
 void show_status(State* state, Matrix* m, ViewPort* vp) {
-    printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n",
+    printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d | panxy %d:%d | %d:%d\n",
             state->gen_counter,
             state->speed_ms,
             state->is_paused,
             m->alive_nodes,
             vp->origin_x,
-            vp->origin_y);
+            vp->origin_y,
+            state->pan_x,
+            state->pan_y,
+            0-(MATRIX_WIDTH/2),
+            0-(MATRIX_HEIGHT/2));
 }
 
 void loop(State* state, Matrix* m, ViewPort* vp) {
     /* Enter main loop */
     while (!state->is_stopped) {
+
+        // limit panning
+        // TODO needs work
+        if (state->pan_x <  0-((MATRIX_WIDTH/2)  - (vp->size_x/2)))
+            state->pan_x =  0-((MATRIX_WIDTH/2)  - (vp->size_x/2));
+        if (state->pan_y <  0-((MATRIX_HEIGHT/2) - (vp->size_y/2)))
+            state->pan_y =  0-((MATRIX_HEIGHT/2) - (vp->size_y/2));
+        if (state->pan_x > (MATRIX_WIDTH/2)  - (vp->size_x/2))
+            state->pan_x =  (MATRIX_WIDTH/2)  - (vp->size_x/2);
+        if (state->pan_y > (MATRIX_HEIGHT/2) - (vp->size_y/2))
+            state->pan_y =  (MATRIX_HEIGHT/2) - (vp->size_y/2);
+
         if (m->alive_nodes <= 0)
             state->is_paused = true;
 

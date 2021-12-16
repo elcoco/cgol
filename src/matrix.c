@@ -65,6 +65,8 @@ Node** init_nodes(Matrix* self) {
         n->print = &print;
         n->count_neighbours = &count_neighbours;
         n->becomes_alive = &becomes_alive;
+        n->age = 0;
+        n->was_alive = false;
         nodes[i] = n;
     }
 
@@ -137,8 +139,8 @@ int update_viewport(ViewPort* self, Matrix* m, int origin_x, int origin_y, int s
         for (int i=loc ; i<(loc+size_x) ; i++, vp_n++) {
             if (i < (m->size_x * m->size_y))
                 *vp_n = *(m->nodes+i);
-            else
-                printf("OUTOFBOUNDS do something!!!!\n");
+            //else
+            //    printw("OUTOFBOUNDS do something!!!!\n");
         }
     }
     return 1;

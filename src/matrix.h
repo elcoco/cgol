@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "utils.h"
 
@@ -30,6 +31,7 @@ struct Node {
 
     // how many generations are we in this state, can be used to fancy coloring of cells
     int age;
+    bool was_alive;
 
     // All rules need to be applied at the same time on all nodes
     // So we need to make a backup of the state while itering over nodes
