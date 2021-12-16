@@ -18,6 +18,10 @@ typedef struct {
     int set_wrapping;
     int is_paused;
     int is_stopped;
+    int gen_counter;
+    int pan_x;
+    int pan_y;
+    int is_pan_changed;
 } State;
 
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);

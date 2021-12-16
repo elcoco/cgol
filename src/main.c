@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <assert.h>
+#include <sys/time.h>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -16,6 +16,7 @@
 
 #define DEFAULT_SPEED_MS 1000000
 #define PAUSED_INTERVAL 1000
+#define CHECK_INTERVAL 10000
 
 #define EXIT_ERROR -1
 
@@ -124,6 +125,24 @@ void set_defaults(State* state) {
     state->is_paused = 0;
     state->is_stopped = 0;
     state->set_wrapping = 0;
+    state->gen_counter = 0;
+    state->pan_x = 0;
+    state->pan_y = 0;
+    state->is_pan_changed = 0;
+}
+
+int get_speed_incr(int speed, int incr) {
+    if (speed > 100000)
+        return 10000;
+    if (speed > 1000)
+        return 1000;
+    if (speed > 100)
+        return 10;
+
+    return 1;
+
+
+
 }
 
 int check_user_input(State* state) {
@@ -138,10 +157,31 @@ int check_user_input(State* state) {
                 state->is_paused = !state->is_paused;
                 break;
             case '+':
-                state->speed_ms += 100000;
+                state->speed_ms += get_speed_incr(state->speed_ms, 1);
                 break;
             case '-':
-                state->speed_ms -= 100000;
+                state->speed_ms -= get_speed_incr(state->speed_ms, 1);
+                break;
+            case 'h':
+                state->pan_x--;
+                state->is_pan_changed = 1;
+                break;
+            case 'l':
+                state->pan_x++;
+                state->is_pan_changed = 1;
+                break;
+            case 'k':
+                state->pan_y--;
+                state->is_pan_changed = 1;
+                break;
+            case 'j':
+                state->pan_y++;
+                state->is_pan_changed = 1;
+                break;
+            case '0':
+                state->pan_y = 0;
+                state->pan_x = 0;
+                state->is_pan_changed = 1;
                 break;
             default:
                 return 0;
@@ -157,14 +197,26 @@ int check_user_input(State* state) {
     return 0;
 }
 
-void non_blocking_sleep() {
-    // TODO write a non blocking sleep funtion that listens for user input and changed state
+void non_blocking_sleep(int interval, State* state) {
+    /* Do a non blocking sleep that checks for user input */
+    struct timeval t_start, t_end;
+    gettimeofday(&t_start, NULL);
+
+    while (1) {
+        gettimeofday(&t_end, NULL);
+        if ((t_end.tv_sec*1000000 + t_end.tv_usec) - (t_start.tv_sec*1000000 + t_start.tv_usec) >= interval)
+            break;
+
+        if (check_user_input(state))
+            return;
+
+        usleep(CHECK_INTERVAL);
+    }
 }
 
 int main(int argc, char** argv) {
 
     setlocale(LC_ALL, "");  // for UTF8 in curses
-    int gen_counter = 0;
 
     // get window size
     struct winsize w;
@@ -172,18 +224,19 @@ int main(int argc, char** argv) {
     int matrix_height = w.ws_row -3;
     int matrix_width = w.ws_col;
 
+    // state contains program state like is_paused, is_stopped etc...
     State state;
     set_defaults(&state);
 
-    // parse arguments
     if (parse_args(&state, argc, argv) < 0)
         return 1;
 
-    // create matrix
+    // matrix contains all data
     Matrix* m = init_matrix(MATRIX_WIDTH, MATRIX_HEIGHT);
     m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
+    // viewport represents only the part of the data that is shown on screen
     ViewPort* vp = m->init_viewport(m);
     vp->update_viewport(vp, m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
 
@@ -202,26 +255,29 @@ int main(int argc, char** argv) {
     s->to_matrix(s, m);
     printf("xoffset: %d, yoffset: %d\n", s->x_offset, s->y_offset);
 
-    // init ncurses
     init_ui();
 
     while (!state.is_stopped) {
-        if (check_user_input(&state))
-            continue;
 
-
-        printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n", gen_counter, state.speed_ms/1000, state.is_paused, m->alive_nodes, vp->origin_x, vp->origin_y);
-
-        if (state.is_paused) {
-            usleep(PAUSED_INTERVAL);
-            continue;
+        if (state.is_pan_changed) {
+            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state.pan_x, (MATRIX_HEIGHT/2)+state.pan_y, matrix_width, matrix_height);
+            state.is_pan_changed = 0;
         }
 
-        show_matrix(vp);
+        printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d\n",
+                state.gen_counter,
+                state.speed_ms,
+                state.is_paused,
+                m->alive_nodes,
+                vp->origin_x,
+                vp->origin_y);
 
-        evolve(m);
-        gen_counter++;
-        usleep(state.speed_ms);
+        if (!state.is_paused) {
+            show_matrix(vp);
+            evolve(m);
+            state.gen_counter++;
+        }
+        non_blocking_sleep(state.speed_ms, &state);
     }
 
     cleanup_ui();
