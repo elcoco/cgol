@@ -195,27 +195,27 @@ void remove_alive_node(Matrix* self, Node* n) {
     /* Remove a node from linked list and reconnect the list */
     self->alive_nodes--;
 
+    if (self->alive_nodes <= 0)
+        return;
+
+    //assert(self->alive_nodes != 0);
     //assert(n);
-    //assert(n->prev);
-    //assert(n->next);
 
     Node* n_prev = n->prev;
     Node* n_next = n->next;
     Node** head = self->head;
 
-    if (n_prev) {
+    if (n_prev != NULL) {
         n_prev->next = n_next;
     } else {
-        // is new head
-        *head = n_next;
+        *head = n_next;     // is new head
         (*head)->prev = NULL;
     }
 
-    if (n_next)
+    if (n_next != NULL)
         n_next->prev = n_prev;
     else
-        // is tail node
-        n_prev->next = NULL;
+        n_prev->next = NULL; // is tail node
 
     // reset removed node links
     n->next = NULL;

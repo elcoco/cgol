@@ -9,6 +9,7 @@
 #define ALIVE_CHR "█"
 #define DEAD_CHR  " "
 
+// data dimensions
 #define MATRIX_WIDTH  1000
 #define MATRIX_HEIGHT 1000
 

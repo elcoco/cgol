@@ -14,6 +14,8 @@
 
 #define DEFAULT_SPEED_MS 1000000
 #define PAUSED_INTERVAL 1000
+#define DEFAULT_PAN_STEPS 5
+#define STATUS_LINES 1
 
 #define EXIT_ERROR -1
 
@@ -29,6 +31,10 @@
  * DONE BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
  * DONE when decreasing time, scale it. when below 100ms stepsize should be less
  * TODO when pressing button, do execute command but dont skip the delay
+ * TODO color based on age
+ * TODO update viewport dimensions on terminal resize
+ * TODO indicate if matrix is in a stable state
+ * TODO viewport xy offset should not go beyond limits
  */
 
 void evolve(Matrix* m) {
@@ -125,6 +131,10 @@ void set_defaults(State* state) {
     state->pan_x          = 0;
     state->pan_y          = 0;
     state->is_pan_changed = false;
+    state->term_is_updated = false;
+    state->term_x          = 0;
+    state->term_y          = 0;
+
 }
 
 bool check_user_input(void* arg) {
@@ -148,20 +158,24 @@ bool check_user_input(void* arg) {
                 state->speed_ms += get_speed_incr(state->speed_ms, 1);
                 break;
             case 'h':
-                state->pan_x--;
+                state->pan_x-=DEFAULT_PAN_STEPS;
                 state->is_pan_changed = true;
                 break;
             case 'l':
-                state->pan_x++;
+                state->pan_x+=DEFAULT_PAN_STEPS;
                 state->is_pan_changed = true;
                 break;
             case 'k':
-                state->pan_y--;
+                state->pan_y-=DEFAULT_PAN_STEPS;
                 state->is_pan_changed = true;
                 break;
             case 'j':
-                state->pan_y++;
+                state->pan_y+=DEFAULT_PAN_STEPS;
                 state->is_pan_changed = true;
+                break;
+            case 's':
+                state->is_paused = true;
+                state->do_step = true;
                 break;
             case '0':
                 state->pan_y = 0;
@@ -191,14 +205,45 @@ void show_status(State* state, Matrix* m, ViewPort* vp) {
             vp->origin_y);
 }
 
+void loop(State* state, Matrix* m, ViewPort* vp) {
+    /* Enter main loop */
+    while (!state->is_stopped) {
+        if (m->alive_nodes <= 0)
+            state->is_paused = true;
+
+        if (state->term_x != COLS || state->term_y != LINES || state->is_pan_changed) {
+
+            state->is_pan_changed = false;
+            state->term_x = COLS;
+            state->term_y = LINES;
+
+            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state->pan_x,
+                                       (MATRIX_HEIGHT/2)+state->pan_y,
+                                       state->term_x,
+                                       state->term_y-STATUS_LINES);
+        }
+
+        if (!non_blocking_sleep(state->speed_ms, &check_user_input, state)) {
+
+            if (!state->is_paused) {
+                evolve(m);
+                state->gen_counter++;
+            }
+        }
+
+        if (state->do_step) {
+            state->do_step = false;
+            evolve(m);
+            state->gen_counter++;
+        }
+
+        show_status(state, m, vp);
+        show_matrix(vp);
+    }
+}
+
 int main(int argc, char** argv) {
     setlocale(LC_ALL, "");  // for UTF8 in curses
-
-    // get window size
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    int matrix_height = w.ws_row -3;
-    int matrix_width = w.ws_col;
 
     // state contains program state like is_paused, is_stopped etc...
     State state;
@@ -214,7 +259,6 @@ int main(int argc, char** argv) {
 
     // viewport represents only the part of the data that is shown on screen
     ViewPort* vp = m->init_viewport(m);
-    vp->update_viewport(vp, m, (MATRIX_WIDTH/2), (MATRIX_HEIGHT/2), matrix_width, matrix_height);
 
     // seed is the initial state of the matrix, can be from file or random
     Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
@@ -227,29 +271,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    s->to_matrix(s, m);     // write seed to matrix
     init_ui();              // setup curses ui
+    s->to_matrix(s, m);     // write seed to matrix
 
-    while (!state.is_stopped) {
+    loop(&state, m, vp);
 
-        if (non_blocking_sleep(state.speed_ms, &check_user_input, &state)) {
-            show_status(&state, m, vp);
-            show_matrix(vp);
-        }
-        else if (!state.is_paused) {
-            show_status(&state, m, vp);
-            show_matrix(vp);
-            evolve(m);
-            state.gen_counter++;
-        }
-
-        if (state.is_pan_changed) {
-            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state.pan_x, (MATRIX_HEIGHT/2)+state.pan_y, matrix_width, matrix_height);
-            state.is_pan_changed = false;
-            show_status(&state, m, vp);
-            show_matrix(vp);
-        }
-    }
     cleanup_ui();
     return 0;
 }

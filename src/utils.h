@@ -23,6 +23,10 @@ typedef struct {
     int pan_x;
     int pan_y;
     bool is_pan_changed;
+    bool do_step;
+    int term_x;
+    int term_y;
+    bool term_is_updated;
 } State;
 
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);
