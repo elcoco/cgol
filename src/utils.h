@@ -28,6 +28,9 @@ typedef struct {
     int term_x;
     int term_y;
     bool term_is_updated;
+    int clicked_x;
+    int clicked_y;
+    bool do_clear;
 } State;
 
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);

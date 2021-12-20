@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <signal.h>     // catch SIGTERM
 
-#include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <locale.h> // for utf8 in curses
+#include <locale.h>     // for utf8 in curses
 
 #include "matrix.h"
 #include "seed.h"
@@ -35,16 +35,16 @@
  * DONE update viewport dimensions on terminal resize
  * TODO indicate if matrix is in a stable state
  * DONE viewport xy offset should not go beyond limits
- * BUG  Segfault when making terminal bigger, doesn't happen when making term smaller
- * TODO draw patterns with mouse
+ * TODO  Segfault when making terminal bigger, doesn't happen when making term smaller
+ * DONE draw patterns with mouse
  * TODO write a RLE pattern file decoder
  * TODO make curses help window
  * DONE make shading optional
  * DONE make origin in center
+ * DONE when no seed is specified, start in paused mode
  */
 
-int matrix_x = (MATRIX_WIDTH % 2 == 0)  ? MATRIX_WIDTH + 1 : MATRIX_WIDTH;
-int matrix_y = (MATRIX_HEIGHT % 2 == 0) ? MATRIX_HEIGHT + 1 : MATRIX_HEIGHT;
+int sigint_caught = 0;
 
 void evolve(Matrix* m) {
     /* Do one tick, check all cells for changes
@@ -55,23 +55,8 @@ void evolve(Matrix* m) {
 
     while (n) {
         // record changed state in tmp_state so we keep a clean state to test against
-
         // if alive cell has 2<cell<3 neighours, stay alive
-        if (n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3) {
-            n->tmp_state = true;
-            n->was_alive = true;
-        } else {
-            n->tmp_state = false;
-        }
-
-        //assert(n->nw);
-        //assert(n->n);
-        //assert(n->ne);
-        //assert(n->w);
-        //assert(n->e);
-        //assert(n->sw);
-        //assert(n->s);
-        //assert(n->se);
+        n->tmp_state = (n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3);
 
         // Check all dead cells around current cell.
         // If more than 3 alive neighbours -> a new cell is born.
@@ -113,7 +98,7 @@ void evolve(Matrix* m) {
 
     n = *(m->head);
 
-    // propagating tmp state to current state
+    // propagate tmp state to current state
     while (n) {
         n->state = n->tmp_state;
 
@@ -122,7 +107,6 @@ void evolve(Matrix* m) {
             Node* n_tmp = n;
             n = n->next;
             m->remove_alive_node(m, n_tmp);
-
         } else {
             n = n->next;
         }
@@ -145,10 +129,9 @@ void set_defaults(State* state) {
     state->term_is_updated = false;
     state->term_x          = 0;
     state->term_y          = 0;
-}
-
-void set_alive(int x, int y) {
-    printw("mousey click event: %d:%d", x, y);
+    state->clicked_x       = -1;
+    state->clicked_y       = -1;
+    state->do_clear       = false;
 }
 
 bool check_user_input(void* arg) {
@@ -204,22 +187,28 @@ bool check_user_input(void* arg) {
                 state->pan_y+=DEFAULT_PAN_BIG_STEPS;
                 state->is_pan_changed = true;
                 break;
-            case 's':
-                state->is_paused = true;
-                state->do_step = true;
-                break;
-            case 'S':
-                state->set_shade = !state->set_shade;;
-                break;
             case '0':
                 state->pan_y = 0;
                 state->pan_x = 0;
                 state->is_pan_changed = true;
                 break;
+            case 's':
+                state->is_paused = true;
+                state->do_step = true;
+                break;
+            case 'S':
+                state->set_shade = !state->set_shade;
+                break;
+            case 'c':
+                state->do_clear = true;
+                break;
             case KEY_MOUSE:
                 if (getmouse(&event) == OK) {
-                    if(event.bstate & BUTTON1_CLICKED) // This works for left-click
-                        set_alive(event.x, event.y);
+                    if(event.bstate & BUTTON1_CLICKED) {
+                        // This works for left-click
+                        state->clicked_x = event.x;
+                        state->clicked_y = event.y;
+                    }
                 }
                 break;
             default:
@@ -250,15 +239,27 @@ void show_status(State* state, Matrix* m, ViewPort* vp) {
 }
 
 void loop(State* state, Matrix* m, ViewPort* vp) {
-    /* Enter main loop */
-    while (!state->is_stopped) {
+    while (!state->is_stopped && !sigint_caught) {
         vp->set_shade = state->set_shade;
+
+        if (state->do_clear) {
+            m->clear_matrix(m);
+            state->do_clear = false;
+        }
 
         if (m->alive_nodes <= 0)
             state->is_paused = true;
 
-        if (state->term_x != COLS || state->term_y != LINES || state->is_pan_changed) {
 
+        // handle mouse clicks
+        if (state->clicked_x > 0 || state->clicked_y > 0) {
+            m->toggle_node(m, state->clicked_x, state->clicked_y, state->pan_x, state->pan_y);
+            state->clicked_x = -1;
+            state->clicked_y = -1;
+        }
+
+        // handle terminal resize and panning
+        if (state->term_x != COLS || state->term_y != LINES || state->is_pan_changed) {
             state->is_pan_changed = false;
             state->term_x = COLS;
             state->term_y = LINES;
@@ -272,6 +273,7 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
         show_status(state, m, vp);
         show_matrix(vp);
 
+        // listen for user input while sleeping
         if (!non_blocking_sleep(state->speed_ms, &check_user_input, state)) {
 
             if (!state->is_paused) {
@@ -280,72 +282,48 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             }
         }
 
+        // handle single steps while paused
         if (state->do_step) {
             state->do_step = false;
             evolve(m);
             state->gen_counter++;
         }
 
-        if (state->pan_x > (matrix_x/2) - (vp->size_x/2))
-            state->pan_x = (matrix_x/2) - (vp->size_x/2);
-        if (state->pan_y > (matrix_y/2) - (vp->size_y/2))
-            state->pan_y = (matrix_y/2) - (vp->size_y/2);
+        // limit panning to data dimensions
+        if (state->pan_x > (MATRIX_WIDTH/2) - (vp->size_x/2))
+            state->pan_x = (MATRIX_WIDTH/2) - (vp->size_x/2);
+        if (state->pan_y > (MATRIX_HEIGHT/2) - (vp->size_y/2))
+            state->pan_y = (MATRIX_HEIGHT/2) - (vp->size_y/2);
 
-        if (state->pan_x < (0-(matrix_x/2)) + (vp->size_x/2))
-            state->pan_x = (0-(matrix_x/2)) + (vp->size_x/2);
-        if (state->pan_y < (0-(matrix_y/2)) + (vp->size_y/2))
-            state->pan_y = (0-(matrix_y/2)) + (vp->size_y/2);
+        if (state->pan_x < (0-(MATRIX_WIDTH/2)) + (vp->size_x/2))
+            state->pan_x = (0-(MATRIX_WIDTH/2)) + (vp->size_x/2);
+        if (state->pan_y < (0-(MATRIX_HEIGHT/2)) + (vp->size_y/2))
+            state->pan_y = (0-(MATRIX_HEIGHT/2)) + (vp->size_y/2);
     }
 }
 
-int test(int argc, char** argv) {
-    Matrix* m = init_matrix(5, 5);
-    m->edge_policy = EP_STOP;
-    m->init_nodes(m);
-
-    ViewPort* vp = m->init_viewport(m);
-
-    State state;
-    set_defaults(&state);
-
-    if (!parse_args(&state, argc, argv))
-        return 1;
-
-    vp->update_viewport(vp, m, 0,
-                               0,
-                               3,
-                               3);
-    Seed* s = init_seed(5, 5);
-
-    if (s->read_file(s, state.seed_path) < 0)
-        return 1;
-
-    s->to_matrix(s, m);     // write seed to matrix
-
-    print_viewport(vp);
-
-    init_ui();              // setup curses ui
-    show_matrix(vp);
-    sleep(1000);
-    cleanup_ui();
-
+void on_sigint(int signum) {
+    sigint_caught = 1;
 }
 
 int main(int argc, char** argv) {
     setlocale(LC_ALL, "");  // for UTF8 in curses
-    //test(argc, argv);
-    //return 0;
-
 
     // state contains program state like is_paused, is_stopped etc...
     State state;
     set_defaults(&state);
 
+    // catch sigint (CTRL-C)
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = on_sigint;
+    sigaction(SIGINT, &action, NULL);
+
     if (!parse_args(&state, argc, argv))
         return 1;
 
     // matrix contains all data
-    Matrix* m = init_matrix(matrix_x, matrix_y);
+    Matrix* m = init_matrix(MATRIX_WIDTH, MATRIX_HEIGHT);
     m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
@@ -353,7 +331,7 @@ int main(int argc, char** argv) {
     ViewPort* vp = m->init_viewport(m);
 
     // seed is the initial state of the matrix, can be from file or random
-    Seed* s = init_seed(matrix_x, matrix_y);
+    Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
 
     if (state.seed_path) {
         if (s->read_file(s, state.seed_path) < 0)

@@ -11,10 +11,12 @@
 #define ALIVE_CHR "█"
 #define DEAD_CHR  " "
 
-// data dimensions must have a middle point
-#define MATRIX_WIDTH  1000
-#define MATRIX_HEIGHT 1000
+// data dimensions must have a middle point so should be an odd number
+#define MATRIX_WIDTH  1001
+#define MATRIX_HEIGHT 1001
 
+//const int matrix_x = (MATRIX_WIDTH % 2 == 0)  ? MATRIX_WIDTH + 1 : MATRIX_WIDTH;
+//const int matrix_y = (MATRIX_HEIGHT % 2 == 0) ? MATRIX_HEIGHT + 1 : MATRIX_HEIGHT;
 
 // Node struct represents a cell in the matrix
 typedef struct Node Node;
@@ -107,6 +109,8 @@ struct Matrix {
     ViewPort*(*init_viewport)(Matrix* m);
     void(*insert_alive_node)(Matrix* self, Node* node);
     void(*remove_alive_node)(Matrix* self, Node* node);
+    void(*toggle_node)(Matrix* self, int clicked_x, int clicked_y, int pan_x, int pan_y);
+    void(*clear_matrix)(Matrix* self);
 };
 
 Matrix* init_matrix(int size_x, int size_y);

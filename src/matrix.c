@@ -51,6 +51,42 @@ int becomes_alive(Node *self) {
     return self->count_neighbours(self) == 3;
 }
 
+void toggle_node(Matrix* self, int clicked_x, int clicked_y, int pan_x, int pan_y) {
+    /* toggle node state after mouseclick in viewport */
+
+    // translate curses (0,0 is topleft) to vp coordinates (0,0 is in middle)
+    int vp_x = clicked_x - (self->vp->size_x/2);
+    int vp_y = clicked_y - (self->vp->size_y/2);
+
+    // translate vp coordinates to matrix coordinates
+    int m_x = vp_x + pan_x;
+    int m_y = vp_y + pan_y;
+
+    int loc = get_index(MATRIX_WIDTH, MATRIX_HEIGHT, m_x, m_y, EP_STOP);
+
+    Node* n = *(self->nodes + loc);
+    if (n->state) {
+        n->state = false;
+        self->remove_alive_node(self, n);
+
+    } else {
+        n->state = true;
+        self->insert_alive_node(self, n);
+    }
+}
+
+void clear_matrix(Matrix* self) {
+    *(self->head) = NULL;
+    Node** n = self->nodes;
+
+    while (*n) {
+        (*n)->state = false;
+        (*n)->was_alive = false;
+        n++;
+    }
+    self->alive_nodes = 0;
+}
+
 Node** init_nodes(Matrix* self) {
     /* Function is called by init_matrix() function to initialize nodes */
     Node** nodes = (Node**)malloc(((self->size_x*self->size_y)+1)*sizeof(Node*));
@@ -203,6 +239,8 @@ void insert_alive_node(Matrix* self, Node* n) {
     self->alive_nodes++;
     Node** head = self->head;
 
+    n->was_alive = true;
+
     if (!*head) {
         // First node becomes the head node
         *head = n;
@@ -276,5 +314,7 @@ Matrix* init_matrix(int size_x, int size_y) {
     m->init_viewport = &init_viewport;
     m->insert_alive_node = &insert_alive_node;
     m->remove_alive_node = &remove_alive_node;
+    m->toggle_node = &toggle_node;
+    m->clear_matrix = &clear_matrix;
     return m;
 }

@@ -107,8 +107,6 @@ int get_loc(int xlim, int ylim, int start_index, int xmov, int ymov, EdgePolicy 
     return (desty*xlim) + destx;
 }
 
-
-
 int get_index(int xlim, int ylim, int x, int y, EdgePolicy edge_policy) {
     /* return array index for the given coordinates */
     // TODO handle wrapping etc
@@ -196,11 +194,6 @@ bool parse_args(State* state, int argc, char** argv) {
         print_usage();
         return false;
     }
-    if (!(state->seed_path || state->set_random)) {
-        printf("Please specify seed source!\n");
-        print_usage();
-        return false;
-    }
     return true;
 }
 
@@ -216,3 +209,36 @@ int get_speed_incr(int speed, int incr) {
     return 1;
 }
 
+/*
+int test(int argc, char** argv) {
+    Matrix* m = init_matrix(5, 5);
+    m->edge_policy = EP_STOP;
+    m->init_nodes(m);
+
+    ViewPort* vp = m->init_viewport(m);
+
+    State state;
+    set_defaults(&state);
+
+    if (!parse_args(&state, argc, argv))
+        return 1;
+
+    vp->update_viewport(vp, m, 0,
+                               0,
+                               3,
+                               3);
+    Seed* s = init_seed(5, 5);
+
+    if (s->read_file(s, state.seed_path) < 0)
+        return 1;
+
+    s->to_matrix(s, m);     // write seed to matrix
+
+    print_viewport(vp);
+
+    init_ui();              // setup curses ui
+    show_matrix(vp);
+    sleep(1000);
+    cleanup_ui();
+}
+*/
