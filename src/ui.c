@@ -13,9 +13,13 @@ int init_ui() {
     cbreak();               // don't wait for enter
     noecho();               // don't echo input to screen
     nodelay(stdscr, TRUE);  // don't block
+    keypad(stdscr, TRUE);   // Enables keypad mode also necessary for mouse clicks
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL); // Don't mask any mouse events
+    printf("\033[?1003h\n"); // Makes the terminal report mouse movement events
 }
 
 void cleanup_ui() {
+    printf("\033[?1003l\n"); // Disable mouse movement events, as l = low
     delwin(ui_window);
     endwin();
     refresh();
@@ -34,7 +38,6 @@ void show_matrix(ViewPort* self) {
     /* Put data from viewport into curses matrix */
     Node** nodes = self->nodes;
 
-
     for (int y=0 ; y<self->size_y ; y++) {
         for (int x=0 ; x<self->size_x ; x++) {
             Node* n = *(self->nodes + (x+(y*self->size_x)));
@@ -44,7 +47,7 @@ void show_matrix(ViewPort* self) {
                 attroff(COLOR_PAIR(1));
             }
             else {
-                if (n->was_alive) {
+                if (n->was_alive && self->set_shade) {
                     attrset(COLOR_PAIR(8));
                     mvaddstr(y, x, ALIVE_CHR);
                     attroff(COLOR_PAIR(8));

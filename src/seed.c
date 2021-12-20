@@ -23,17 +23,14 @@ int read_file(Seed* self, char* path) {
 
         // count max x stringlen (used for calculating matrix offset) and record in struct
         int len = strlen(buf)-2; // why 2?, \n is just one char ffs!
-        if (len > self->max_x) {
-            self->max_x = len;
+        if (len > self->seed_x) {
+            self->seed_x = len;
         }
 
         *(self->data+y) = strndup(buf, strlen(buf)-1);
         y++;
-        (self->max_y)++;
+        (self->seed_y)++;
     }
-
-    self->x_offset = (self->term_x-self->max_x) /2;
-    self->y_offset = (self->term_y-self->max_y) /2;
 
     fclose(fp);
     return 0;
@@ -43,7 +40,7 @@ void print_seed(Seed* self) {
     /* print seed for debugging */
     char** ptr = self->data;
 
-    for (int i=0 ; i<self->max_y ; i++, ptr++) {
+    for (int i=0 ; i<self->seed_y ; i++, ptr++) {
         printf("[%d] %s\n", i, *ptr);
     }
 }
@@ -53,24 +50,39 @@ int to_matrix(Seed* self, Matrix* m) {
     char** dptr = self->data;
     Node** nodes = m->nodes;
 
-    for (int y=0 ; y<self->max_y ; y++, dptr++) {
+    // this will truncate in the right way
+    int xmin = 0 - (self->seed_x / 2);
+    int ymin = 0 - (self->seed_y / 2);
+    int xmax = xmin + self->seed_x;
+    int ymax = ymin + self->seed_y-1;
+
+    int i = 0;
+
+    for (int y=ymin ; y<=ymax ; y++, dptr++) {
         char* c = *dptr;
 
-        for (int x=0 ; x<strlen(*dptr) ; x++, c++) {
+        //for (int x=xmin ; x<=(xmin + strlen(*dptr)) ; x++, c++) {
+        for (int x=xmin ; x<=xmax ; x++, c++) {
             // only allowed char is O!
             if (*c != 'O')
                 continue;
+            i++;
 
-            // Translate terminal location to index in nodes array
-            int loc = get_loc(self->term_x, self->term_y, 0, x+self->x_offset, y+self->y_offset, m->edge_policy);
-            printf("[%c] x=%d, y=%d, loc=%d\n", *c, x, y, loc);
+            // Translate coordinates to index in nodes array
+            int loc = get_index(self->term_x, self->term_y, x, y, m->edge_policy);
+            printf("[%c]\t%3d x %3d\tloc=%d\n", *c, x, y, loc);
             Node* n = *(nodes+loc);
             n->state = 1;
 
             // add node to linked list, which is used for faster iteration inbetween generations
             m->insert_alive_node(m, n);
+
+            //printf("\n");
+            //n->print(n);
+            //printf("\n");
         } 
     }
+    printf("Finished putting seed in matrix, enabled %d nodes.\n", i);
     return 0;
 }
 
@@ -100,10 +112,8 @@ Seed* init_seed(int term_x, int term_y) {
     seed->print_seed = &print_seed;
     seed->read_random = &read_random;
 
-    seed->max_x = 0;
-    seed->max_y = 0;
-    seed->x_offset = 0;
-    seed->y_offset = 0;
+    seed->seed_x = 0;
+    seed->seed_y = 0;
     seed->term_x = term_x;
     seed->term_y = term_y;
     seed->data = (char**)malloc(DATA_SIZE*sizeof(char*));

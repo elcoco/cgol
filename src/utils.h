@@ -17,6 +17,7 @@ typedef struct {
     int speed_ms;
     bool set_random;
     bool set_wrapping;
+    bool set_shade;
     bool is_paused;
     bool is_stopped;
     int gen_counter;
@@ -30,7 +31,8 @@ typedef struct {
 } State;
 
 int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);
-int parse_args(State* state, int argc, char** argv);
+int get_index(int xlim, int ylim, int x, int y, EdgePolicy edge_policy);
+bool parse_args(State* state, int argc, char** argv);
 void print_usage();
 int get_speed_incr(int speed, int incr);
 

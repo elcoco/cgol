@@ -16,7 +16,7 @@
 #define PAUSED_INTERVAL 1000
 #define DEFAULT_PAN_STEPS 5
 #define DEFAULT_PAN_BIG_STEPS 20
-#define STATUS_LINES 1
+#define STATUS_LINES 2
 
 
 /* DONE wrap nodes in matrix struct so we can save dimensions and stuff
@@ -31,11 +31,19 @@
  * DONE when decreasing time, scale it. when below 100ms stepsize should be less
  * TODO when pressing button, do execute command but dont skip the delay
  * TODO color based on age
- * TODO update viewport dimensions on terminal resize
+ * DONE update viewport dimensions on terminal resize
  * TODO indicate if matrix is in a stable state
- * TODO viewport xy offset should not go beyond limits
+ * DONE viewport xy offset should not go beyond limits
  * BUG  Segfault when making terminal bigger, doesn't happen when making term smaller
+ * TODO draw patterns with mouse
+ * TODO write a RLE pattern file decoder
+ * TODO make curses help window
+ * DONE make shading optional
+ * TODO make origin in center
  */
+
+int matrix_x = (MATRIX_WIDTH % 2 == 0)  ? MATRIX_WIDTH + 1 : MATRIX_WIDTH;
+int matrix_y = (MATRIX_HEIGHT % 2 == 0) ? MATRIX_HEIGHT + 1 : MATRIX_HEIGHT;
 
 void evolve(Matrix* m) {
     /* Do one tick, check all cells for changes
@@ -49,12 +57,10 @@ void evolve(Matrix* m) {
 
         // if alive cell has 2<cell<3 neighours, stay alive
         if (n->count_neighbours(n) >= 2 && n->count_neighbours(n) <= 3) {
-            n->tmp_state = 1;
-            n->age++;
+            n->tmp_state = true;
             n->was_alive = true;
         } else {
-            n->tmp_state = 0;
-            n->age = 0;
+            n->tmp_state = false;
         }
 
         //assert(n->nw);
@@ -69,35 +75,35 @@ void evolve(Matrix* m) {
         // Check all dead cells around current cell.
         // If more than 3 alive neighbours -> a new cell is born.
         if (n->nw && n->nw->becomes_alive(n->nw)) {
-            n->nw->tmp_state = 1;
+            n->nw->tmp_state = true;
             m->insert_alive_node(m, n->nw);
         }
         if (n->n && n->n->becomes_alive(n->n)) {
-            n->n->tmp_state = 1;
+            n->n->tmp_state = true;
             m->insert_alive_node(m, n->n);
         }
         if (n->ne && n->ne->becomes_alive(n->ne)) {
-            n->ne->tmp_state = 1;
+            n->ne->tmp_state = true;
             m->insert_alive_node(m, n->ne);
         }
         if (n->e && n->e->becomes_alive(n->e)) {
-            n->e->tmp_state = 1;
+            n->e->tmp_state = true;
             m->insert_alive_node(m, n->e);
         }
         if (n->w && n->w->becomes_alive(n->w)) {
-            n->w->tmp_state = 1;
+            n->w->tmp_state = true;
             m->insert_alive_node(m, n->w);
         }
         if (n->sw && n->sw->becomes_alive(n->sw)) {
-            n->sw->tmp_state = 1;
+            n->sw->tmp_state = true;
             m->insert_alive_node(m, n->sw);
         }
         if (n->s && n->s->becomes_alive(n->s)) {
-            n->s->tmp_state = 1;
+            n->s->tmp_state = true;
             m->insert_alive_node(m, n->s);
         }
         if (n->se && n->se->becomes_alive(n->se)) {
-            n->se->tmp_state = 1;
+            n->se->tmp_state = true;
             m->insert_alive_node(m, n->se);
         }
 
@@ -130,6 +136,7 @@ void set_defaults(State* state) {
     state->is_paused      = false;
     state->is_stopped     = false;
     state->set_wrapping   = false;
+    state->set_shade      = false;
     state->gen_counter    = 0;
     state->pan_x          = 0;
     state->pan_y          = 0;
@@ -139,12 +146,17 @@ void set_defaults(State* state) {
     state->term_y          = 0;
 }
 
+void set_alive(int x, int y) {
+    printw("mousey click event: %d:%d", x, y);
+}
+
 bool check_user_input(void* arg) {
     // state struct is passed as an argument to a callback, cast it to the proper type
     State* state = arg;
+    MEVENT event;       // curses mouse event
 
     /* check for user input, return 1 if there was input */
-    char c = getch();
+    int c = getch();
     if (c != ERR) {
         switch (c) {
             case 'q':
@@ -195,10 +207,19 @@ bool check_user_input(void* arg) {
                 state->is_paused = true;
                 state->do_step = true;
                 break;
+            case 'S':
+                state->set_shade = !state->set_shade;;
+                break;
             case '0':
                 state->pan_y = 0;
                 state->pan_x = 0;
                 state->is_pan_changed = true;
+                break;
+            case KEY_MOUSE:
+                if (getmouse(&event) == OK) {
+                    if(event.bstate & BUTTON1_CLICKED) // This works for left-click
+                        set_alive(event.x, event.y);
+                }
                 break;
             default:
                 return false;
@@ -214,33 +235,23 @@ bool check_user_input(void* arg) {
 }
 
 void show_status(State* state, Matrix* m, ViewPort* vp) {
-    printw("Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d | panxy %d:%d | %d:%d\n",
+    mvprintw(vp->size_y, 0,
+            "Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d | panxy %d:%d | shade: %d\n",
             state->gen_counter,
             state->speed_ms,
             state->is_paused,
             m->alive_nodes,
-            vp->origin_x,
-            vp->origin_y,
+            vp->offset_x,
+            vp->offset_y,
             state->pan_x,
             state->pan_y,
-            0-(MATRIX_WIDTH/2),
-            0-(MATRIX_HEIGHT/2));
+            state->set_shade);
 }
 
 void loop(State* state, Matrix* m, ViewPort* vp) {
     /* Enter main loop */
     while (!state->is_stopped) {
-
-        // limit panning
-        // TODO needs work
-        if (state->pan_x <  0-((MATRIX_WIDTH/2)  - (vp->size_x/2)))
-            state->pan_x =  0-((MATRIX_WIDTH/2)  - (vp->size_x/2));
-        if (state->pan_y <  0-((MATRIX_HEIGHT/2) - (vp->size_y/2)))
-            state->pan_y =  0-((MATRIX_HEIGHT/2) - (vp->size_y/2));
-        if (state->pan_x > (MATRIX_WIDTH/2)  - (vp->size_x/2))
-            state->pan_x =  (MATRIX_WIDTH/2)  - (vp->size_x/2);
-        if (state->pan_y > (MATRIX_HEIGHT/2) - (vp->size_y/2))
-            state->pan_y =  (MATRIX_HEIGHT/2) - (vp->size_y/2);
+        vp->set_shade = state->set_shade;
 
         if (m->alive_nodes <= 0)
             state->is_paused = true;
@@ -251,11 +262,20 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             state->term_x = COLS;
             state->term_y = LINES;
 
-            vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state->pan_x,
-                                       (MATRIX_HEIGHT/2)+state->pan_y,
+            //vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state->pan_x,
+            //                           (MATRIX_HEIGHT/2)+state->pan_y,
+            //                           state->term_x,
+            //                           state->term_y-STATUS_LINES);
+            vp->update_viewport(vp, m, state->pan_x,
+                                       state->pan_y,
                                        state->term_x,
                                        state->term_y-STATUS_LINES);
         }
+
+        show_status(state, m, vp);
+        show_matrix(vp);
+
+
 
         if (!non_blocking_sleep(state->speed_ms, &check_user_input, state)) {
 
@@ -264,6 +284,9 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
                 state->gen_counter++;
             }
         }
+        //show_status(state, m, vp);
+        //refresh();
+        //sleep(1000);
 
         if (state->do_step) {
             state->do_step = false;
@@ -271,23 +294,68 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             state->gen_counter++;
         }
 
-        show_status(state, m, vp);
-        show_matrix(vp);
+        // TODO limit panning 
+        if (state->pan_x > (matrix_x/2) - (vp->size_x/2))
+            state->pan_x = (matrix_x/2) - (vp->size_x/2);
+        if (state->pan_y > (matrix_y/2) - (vp->size_y/2))
+            state->pan_y = (matrix_y/2) - (vp->size_y/2);
+
+        if (state->pan_x < (0-(matrix_x/2)) + (vp->size_x/2))
+            state->pan_x = (0-(matrix_x/2)) + (vp->size_x/2);
+        if (state->pan_y < (0-(matrix_y/2)) + (vp->size_y/2))
+            state->pan_y = (0-(matrix_y/2)) + (vp->size_y/2);
+
     }
+}
+
+int test(int argc, char** argv) {
+    Matrix* m = init_matrix(5, 5);
+    m->edge_policy = EP_STOP;
+    m->init_nodes(m);
+
+    ViewPort* vp = m->init_viewport(m);
+
+    State state;
+    set_defaults(&state);
+
+    if (!parse_args(&state, argc, argv))
+        return 1;
+
+    vp->update_viewport(vp, m, 0,
+                               0,
+                               3,
+                               3);
+    Seed* s = init_seed(5, 5);
+
+    if (s->read_file(s, state.seed_path) < 0)
+        return 1;
+
+    s->to_matrix(s, m);     // write seed to matrix
+
+    print_viewport(vp);
+
+    init_ui();              // setup curses ui
+    show_matrix(vp);
+    sleep(1000);
+    cleanup_ui();
+
 }
 
 int main(int argc, char** argv) {
     setlocale(LC_ALL, "");  // for UTF8 in curses
+    //test(argc, argv);
+    //return 0;
+
 
     // state contains program state like is_paused, is_stopped etc...
     State state;
     set_defaults(&state);
 
-    if (parse_args(&state, argc, argv) < 0)
+    if (!parse_args(&state, argc, argv))
         return 1;
 
     // matrix contains all data
-    Matrix* m = init_matrix(MATRIX_WIDTH, MATRIX_HEIGHT);
+    Matrix* m = init_matrix(matrix_x, matrix_y);
     m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
@@ -295,7 +363,7 @@ int main(int argc, char** argv) {
     ViewPort* vp = m->init_viewport(m);
 
     // seed is the initial state of the matrix, can be from file or random
-    Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
+    Seed* s = init_seed(matrix_x, matrix_y);
 
     if (state.seed_path) {
         if (s->read_file(s, state.seed_path) < 0)
@@ -305,8 +373,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    init_ui();              // setup curses ui
     s->to_matrix(s, m);     // write seed to matrix
+    init_ui();              // setup curses ui
 
     loop(&state, m, vp);
 

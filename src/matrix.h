@@ -4,15 +4,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "utils.h"
 
 #define ALIVE_CHR "█"
-#define DEAD_CHR  " "
+#define DEAD_CHR  "."
 
-// data dimensions
-#define MATRIX_WIDTH  1000
-#define MATRIX_HEIGHT 1000
+// data dimensions must have a middle point
+#define MATRIX_WIDTH  500
+#define MATRIX_HEIGHT 500
 
 
 // Node struct represents a cell in the matrix
@@ -23,19 +24,18 @@ typedef struct Matrix Matrix;
 
 struct Node {
     // on or off state
-    int state;
+    bool state;
+
+    // All rules need to be applied at the same time on all nodes
+    // So we need to make a backup of the state while itering over nodes
+    bool tmp_state;
 
     // Link to next node in linked list that only contains alive nodes.
     Node* next;
     Node* prev;
 
-    // how many generations are we in this state, can be used to fancy coloring of cells
-    int age;
+    // if node was alive, leave a shade
     bool was_alive;
-
-    // All rules need to be applied at the same time on all nodes
-    // So we need to make a backup of the state while itering over nodes
-    int tmp_state;
 
     // only for debugging
     int32_t index;
@@ -68,13 +68,23 @@ struct ViewPort {
     int size_x;
     int size_y;
 
-    int origin_x;
-    int origin_y;
+    int offset_x;
+    int offset_y;
+
+    // top left coordinates
+    int start_x;
+    int start_y;
+
+    // bottom right coordinates
+    int end_x;
+    int end_y;
+
+    bool set_shade;
 
     Node** nodes;
-    void(*print_viewport)(ViewPort* self);
+    void(*print_viewport)(ViewPort* self);  // not used anymore but still here
     void(*free_viewport)(ViewPort* self);
-    int(*update_viewport)(ViewPort* vp, Matrix* m, int origin_x, int origin_y, int size_x, int size_y);
+    int(*update_viewport)(ViewPort* vp, Matrix* m, int offset_x, int offset_y, int size_x, int size_y);
 };
 
 // Matrix wraps nodes and contains info about dimensions and stuff
@@ -101,5 +111,6 @@ struct Matrix {
 
 Matrix* init_matrix(int size_x, int size_y);
 void print_linked_list(Node* n);
+void print_viewport(ViewPort* self);
 
 #endif

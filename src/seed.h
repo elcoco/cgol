@@ -17,12 +17,8 @@ typedef struct Seed Seed;
 
 struct Seed {
     // max dimensions of seed
-    int max_x;
-    int max_y;
-
-    // offset of seed in matrix
-    int x_offset;
-    int y_offset;
+    int seed_x;
+    int seed_y;
 
     // terminal dimensions
     int term_x;
