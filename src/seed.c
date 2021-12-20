@@ -36,6 +36,140 @@ int read_file(Seed* self, char* path) {
     return 0;
 }
 
+void fast_forward(char** c, char* options, char* ignore_lst, char* buf) {
+    /* fast forward until a char from options is found
+     * If buf != NULL, save chars in buf
+     */
+    // save skipped chars in buffer
+    char* ptr = buf;
+
+    // don't return these chars with buffer
+    ignore_lst = (ignore_lst) ? ignore_lst : "";
+
+    while (!strchr(options, **c)) {
+        printf("fast forwarding: %c\n", **c);
+
+        if (ptr != NULL) {
+            if (!strchr(ignore_lst, **c))
+                *ptr++ = **c;
+        }
+        (*c)++;
+    }
+
+    // terminate string
+    if (ptr != NULL)
+        *ptr = '\0';
+}
+
+int read_rle(Seed* self, char* path) {
+    char buf[5000];
+    int y = 0;
+    FILE *fp = fopen(path, "r");
+
+    if (fp == NULL) {
+        printf("File not found!\n");
+        return -1;
+    }
+
+    char* ptr = buf;
+    char chr;
+    while ((chr = fgetc(fp)) != EOF )
+        *ptr++ = chr;
+    *ptr = '\0';
+    printf("%s\n", buf);
+
+    char* c = buf;
+    for (int i=0 ; i<strlen(buf) ; i++, c++) {
+
+        if (*c == '#')
+        {
+            char comment[500] = "";
+            fast_forward(&c, "\n", "\n", comment);
+            printf("Ignoring comment: %s\n", comment);
+        }
+        else if (strchr("x", *c))
+        {
+            fast_forward(&c, "\n", NULL, NULL);
+        }
+        else if (strchr("0123456789", *c))
+        {
+            char amount[10] = "";
+            fast_forward(&c, "ob", "\n", amount);
+            printf("amount: %s cell type: %c\n", amount, *c);
+
+            if (strchr(amount, '$')) {
+                printf("RLE format error, %s\n", amount);
+                printf("Found in line: %s\n", c);
+                return -1;
+            }
+        }
+        else if (strchr("ob", *c))
+        {
+            printf("amount: 1 cell type: %c\n", *c);
+        }
+        else if (strchr("$", *c))
+        {
+            printf("EOL\n");
+        }
+        else if (strchr("!", *c))
+        {
+            printf("EOF\n");
+            break;
+        }
+
+
+
+
+        //printf("%c", *c);
+
+    }
+
+
+
+
+
+
+
+    return 0;
+
+    /*
+
+
+
+    printf("bevers\n");
+
+        if (c == '#') {
+
+        // skip comments
+        if (buf[0] == '#' && buf[1] == 'C') {
+            printf("comment: %s\n", buf);
+            continue;
+        }
+
+        //printf("%s\n", buf);
+        char* c = buf;
+
+        if (!chrcmp(*c, "0123456789bo$!"))
+            continue;
+
+        printf("new line: %s\n", c);
+        for (int i=0 ; i<strlen(buf) ; i++, c++) {
+            
+
+            if (*c == '!') {
+                printf("EOF\n");
+                break;
+            }
+
+        }
+        }
+    }
+
+    fclose(fp);
+    return 0;
+    */
+}
+
 void print_seed(Seed* self) {
     /* print seed for debugging */
     char** ptr = self->data;
@@ -108,6 +242,7 @@ Seed* init_seed(int term_x, int term_y) {
     Seed* seed = (Seed*)malloc(sizeof(Seed));
 
     seed->read_file = &read_file;
+    seed->read_rle = &read_rle;
     seed->to_matrix = &to_matrix;
     seed->print_seed = &print_seed;
     seed->read_random = &read_random;

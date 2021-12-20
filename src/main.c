@@ -333,6 +333,8 @@ int main(int argc, char** argv) {
     // seed is the initial state of the matrix, can be from file or random
     Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
 
+    s->read_rle(s, state.seed_path);
+
     if (state.seed_path) {
         if (s->read_file(s, state.seed_path) < 0)
             return 1;
