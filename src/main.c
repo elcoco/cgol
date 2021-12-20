@@ -21,7 +21,8 @@
 
 /* DONE wrap nodes in matrix struct so we can save dimensions and stuff
  * TODO random seed generator
- * TODO check if patern is too big for matrix
+ * TODO error when pattern exceeds matrix boundaries, get_index returns -1 if so
+ *      should not be difficult
  * DONE make wrapping optional
  * DONE matrix should be able to be bigger than viewport
  *      add viewport dimensions to matrix struct so we can take a subset to display
@@ -29,7 +30,7 @@
  * DONE keep array of alive cells. By only checking these+neighbours we greatly improve speed
  * DONE BUG  segfault using acorn seed @gen 2213, possibly when an alive cell falls off edge, doesn't happen with wrapping on
  * DONE when decreasing time, scale it. when below 100ms stepsize should be less
- * TODO when pressing button, do execute command but dont skip the delay
+ * DONE when pressing button, do execute command but dont skip the delay
  * TODO color based on age
  * DONE update viewport dimensions on terminal resize
  * TODO indicate if matrix is in a stable state
@@ -39,7 +40,7 @@
  * TODO write a RLE pattern file decoder
  * TODO make curses help window
  * DONE make shading optional
- * TODO make origin in center
+ * DONE make origin in center
  */
 
 int matrix_x = (MATRIX_WIDTH % 2 == 0)  ? MATRIX_WIDTH + 1 : MATRIX_WIDTH;
@@ -262,10 +263,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             state->term_x = COLS;
             state->term_y = LINES;
 
-            //vp->update_viewport(vp, m, (MATRIX_WIDTH/2)+state->pan_x,
-            //                           (MATRIX_HEIGHT/2)+state->pan_y,
-            //                           state->term_x,
-            //                           state->term_y-STATUS_LINES);
             vp->update_viewport(vp, m, state->pan_x,
                                        state->pan_y,
                                        state->term_x,
@@ -275,8 +272,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
         show_status(state, m, vp);
         show_matrix(vp);
 
-
-
         if (!non_blocking_sleep(state->speed_ms, &check_user_input, state)) {
 
             if (!state->is_paused) {
@@ -284,9 +279,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
                 state->gen_counter++;
             }
         }
-        //show_status(state, m, vp);
-        //refresh();
-        //sleep(1000);
 
         if (state->do_step) {
             state->do_step = false;
@@ -294,7 +286,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             state->gen_counter++;
         }
 
-        // TODO limit panning 
         if (state->pan_x > (matrix_x/2) - (vp->size_x/2))
             state->pan_x = (matrix_x/2) - (vp->size_x/2);
         if (state->pan_y > (matrix_y/2) - (vp->size_y/2))
@@ -304,7 +295,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             state->pan_x = (0-(matrix_x/2)) + (vp->size_x/2);
         if (state->pan_y < (0-(matrix_y/2)) + (vp->size_y/2))
             state->pan_y = (0-(matrix_y/2)) + (vp->size_y/2);
-
     }
 }
 

@@ -9,11 +9,11 @@
 #include "utils.h"
 
 #define ALIVE_CHR "█"
-#define DEAD_CHR  "."
+#define DEAD_CHR  " "
 
 // data dimensions must have a middle point
-#define MATRIX_WIDTH  500
-#define MATRIX_HEIGHT 500
+#define MATRIX_WIDTH  1000
+#define MATRIX_HEIGHT 1000
 
 
 // Node struct represents a cell in the matrix
