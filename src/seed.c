@@ -36,22 +36,31 @@ int read_file(Seed* self, char* path) {
     return 0;
 }
 
-void fast_forward(char** c, char* options, char* ignore_lst, char* buf) {
-    /* fast forward until a char from options is found
-     * If buf != NULL, save chars in buf
+bool fast_forward(char** c, char* search_lst, char* expected_lst, char* ignore_lst, char* buf) {
+    /* fast forward until a char from search_lst is found
+     * Save all chars in buf until a char from search_lst is found
+     * Only save in buf when a char is found in expected_lst
+     *
+     * If buf == NULL,          don't save chars
+     * If expected_lst == NULL, allow all characters
      */
-    // save skipped chars in buffer
+
+    // save skipped chars that are on expected_lst in buffer
     char* ptr = buf;
 
     // don't return these chars with buffer
     ignore_lst = (ignore_lst) ? ignore_lst : "";
 
-    while (!strchr(options, **c)) {
-        printf("fast forwarding: %c\n", **c);
+    while (!strchr(search_lst, **c)) {
+        //printf("fast forwarding: %c\n", **c);
 
-        if (ptr != NULL) {
-            if (!strchr(ignore_lst, **c))
+        if (buf != NULL) {
+            if (!strchr(ignore_lst, **c) && expected_lst == NULL)
                 *ptr++ = **c;
+            else if (!strchr(ignore_lst, **c) && strchr(expected_lst, **c))
+                *ptr++ = **c;
+            else
+                return false;
         }
         (*c)++;
     }
@@ -59,11 +68,12 @@ void fast_forward(char** c, char* options, char* ignore_lst, char* buf) {
     // terminate string
     if (ptr != NULL)
         *ptr = '\0';
+
+    return true;
 }
 
 int read_rle(Seed* self, char* path) {
     char buf[5000];
-    int y = 0;
     FILE *fp = fopen(path, "r");
 
     if (fp == NULL) {
@@ -71,6 +81,7 @@ int read_rle(Seed* self, char* path) {
         return -1;
     }
 
+    // save all chars in buffer
     char* ptr = buf;
     char chr;
     while ((chr = fgetc(fp)) != EOF )
@@ -78,30 +89,30 @@ int read_rle(Seed* self, char* path) {
     *ptr = '\0';
     printf("%s\n", buf);
 
+    // parse char by char
     char* c = buf;
     for (int i=0 ; i<strlen(buf) ; i++, c++) {
 
         if (*c == '#')
         {
             char comment[500] = "";
-            fast_forward(&c, "\n", "\n", comment);
+            fast_forward(&c, "\n", NULL, "\n", comment);
             printf("Ignoring comment: %s\n", comment);
         }
         else if (strchr("x", *c))
         {
-            fast_forward(&c, "\n", NULL, NULL);
+            char header[500] = "";
+            fast_forward(&c, "\n", NULL, "\n", header);
+            printf("Ignoring header line: %s\n", header);
         }
         else if (strchr("0123456789", *c))
         {
-            char amount[10] = "";
-            fast_forward(&c, "ob", "\n", amount);
-            printf("amount: %s cell type: %c\n", amount, *c);
-
-            if (strchr(amount, '$')) {
-                printf("RLE format error, %s\n", amount);
-                printf("Found in line: %s\n", c);
-                return -1;
+            char amount[100] = "";
+            if (!fast_forward(&c, "ob", "01234567890", "\n", amount)) {
+                printf("RLE format error, found unexpected chars: %s + %c\n", amount, *c);
+                continue;
             }
+            printf("amount: %s cell type: %c\n", amount, *c);
         }
         else if (strchr("ob", *c))
         {
@@ -116,20 +127,7 @@ int read_rle(Seed* self, char* path) {
             printf("EOF\n");
             break;
         }
-
-
-
-
-        //printf("%c", *c);
-
     }
-
-
-
-
-
-
-
     return 0;
 
     /*
