@@ -46,8 +46,15 @@
 
 int sigint_caught = 0;
 
-void evolve(Matrix* m) {
-    /* Do one tick, check all cells for changes
+
+void on_sigint(int signum)
+{
+    sigint_caught = 1;
+}
+
+void evolve(Matrix* m)
+{
+    /* Do one tick, check cells in linked list (m->head)  for changes.
      * Instead of checking all cells we only track the alive cells and it's neighbouring dead cells. */
 
     assert(*(m->head) != NULL);
@@ -114,7 +121,8 @@ void evolve(Matrix* m) {
     return;
 }
 
-void set_defaults(State* state) {
+void set_defaults(State* state)
+{
     /* Set some default values for the state struct so we don't end up with garbage */
     state->speed_ms = DEFAULT_SPEED_MS;
     state->set_random     = false;
@@ -134,7 +142,8 @@ void set_defaults(State* state) {
     state->do_clear       = false;
 }
 
-bool check_user_input(void* arg) {
+bool check_user_input(void* arg)
+{
     // state struct is passed as an argument to a callback, cast it to the proper type
     State* state = arg;
     MEVENT event;       // curses mouse event
@@ -224,7 +233,8 @@ bool check_user_input(void* arg) {
     return false;
 }
 
-void show_status(State* state, Matrix* m, ViewPort* vp) {
+void show_status(State* state, Matrix* m, ViewPort* vp)
+{
     mvprintw(vp->size_y, 0,
             "Generation: %d | Speed: %d | Paused: %d | alive_nodes: %d | vp x/y: %d:%d | panxy %d:%d | shade: %d\n",
             state->gen_counter,
@@ -238,7 +248,40 @@ void show_status(State* state, Matrix* m, ViewPort* vp) {
             state->set_shade);
 }
 
-void loop(State* state, Matrix* m, ViewPort* vp) {
+void check_pan_limits(State* state, int m_x, int m_y, int vp_x, int vp_y)
+{
+    /* limit panning to data dimensions */
+    if (state->pan_x > (m_x/2) - (vp_x/2))
+        state->pan_x = (m_x/2) - (vp_x/2);
+    if (state->pan_y > (m_y/2) - (vp_y/2))
+        state->pan_y = (m_y/2) - (vp_y/2);
+
+    if (state->pan_x < (0-(m_x/2)) + (vp_x/2))
+        state->pan_x = (0-(m_x/2)) + (vp_x/2);
+    if (state->pan_y < (0-(m_y/2)) + (vp_y/2))
+        state->pan_y = (0-(m_y/2)) + (vp_y/2);
+}
+
+bool handle_vp_changed(State* state, Matrix* m, ViewPort* vp)
+{
+    /* Handle terminal resize and panning
+     * TODO: maybe move to matrix.c */
+    if (state->term_x != COLS || state->term_y != LINES || state->is_pan_changed) {
+        state->term_x = COLS;
+        state->term_y = LINES;
+        state->is_pan_changed = false;
+
+        vp->update_viewport(vp, m, state->pan_x,
+                                   state->pan_y,
+                                   state->term_x,
+                                   state->term_y-STATUS_LINES);
+        return true;
+    }
+    return false;
+}
+
+void loop(State* state, Matrix* m, ViewPort* vp)
+{
     while (!state->is_stopped && !sigint_caught) {
         vp->set_shade = state->set_shade;
 
@@ -250,7 +293,6 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
         if (m->alive_nodes <= 0)
             state->is_paused = true;
 
-
         // handle mouse clicks
         if (state->clicked_x > 0 || state->clicked_y > 0) {
             m->toggle_node(m, state->clicked_x, state->clicked_y, state->pan_x, state->pan_y);
@@ -259,23 +301,13 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
         }
 
         // handle terminal resize and panning
-        if (state->term_x != COLS || state->term_y != LINES || state->is_pan_changed) {
-            state->is_pan_changed = false;
-            state->term_x = COLS;
-            state->term_y = LINES;
-
-            vp->update_viewport(vp, m, state->pan_x,
-                                       state->pan_y,
-                                       state->term_x,
-                                       state->term_y-STATUS_LINES);
-        }
+        handle_vp_changed(state, m, vp);
 
         show_status(state, m, vp);
         show_matrix(vp);
 
         // listen for user input while sleeping
         if (!non_blocking_sleep(state->speed_ms, &check_user_input, state)) {
-
             if (!state->is_paused) {
                 evolve(m);
                 state->gen_counter++;
@@ -288,25 +320,12 @@ void loop(State* state, Matrix* m, ViewPort* vp) {
             evolve(m);
             state->gen_counter++;
         }
-
-        // limit panning to data dimensions
-        if (state->pan_x > (MATRIX_WIDTH/2) - (vp->size_x/2))
-            state->pan_x = (MATRIX_WIDTH/2) - (vp->size_x/2);
-        if (state->pan_y > (MATRIX_HEIGHT/2) - (vp->size_y/2))
-            state->pan_y = (MATRIX_HEIGHT/2) - (vp->size_y/2);
-
-        if (state->pan_x < (0-(MATRIX_WIDTH/2)) + (vp->size_x/2))
-            state->pan_x = (0-(MATRIX_WIDTH/2)) + (vp->size_x/2);
-        if (state->pan_y < (0-(MATRIX_HEIGHT/2)) + (vp->size_y/2))
-            state->pan_y = (0-(MATRIX_HEIGHT/2)) + (vp->size_y/2);
+        check_pan_limits(state, MATRIX_WIDTH, MATRIX_HEIGHT, vp->size_x, vp->size_y);
     }
 }
 
-void on_sigint(int signum) {
-    sigint_caught = 1;
-}
-
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     setlocale(LC_ALL, "");  // for UTF8 in curses
 
     // state contains program state like is_paused, is_stopped etc...
@@ -327,28 +346,21 @@ int main(int argc, char** argv) {
     m->edge_policy = (state.set_wrapping) ? EP_WRAP : EP_STOP;
     m->init_nodes(m);
 
-    // viewport represents only the part of the data that is shown on screen
+    // viewport represents the part of the data that is shown on screen
     ViewPort* vp = m->init_viewport(m);
 
-    // seed is the initial state of the matrix, can be from file or random
-    Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
+    // seed is the initial state of the matrix, must be read from file
+    if (state.seed_path) {
+        Seed* s = init_seed(MATRIX_WIDTH, MATRIX_HEIGHT);
 
-    if (s->read_rle(s, state.seed_path) < 0)
-        return 1;
+        if (s->read_file(s, state.seed_path) < 0)
+            return 1;
 
-    //if (state.seed_path) {
-    //    if (s->read_file(s, state.seed_path) < 0)
-    //        return 1;
-    //} else if (state.set_random) {
-    //    printf("Not implemented!\n");
-    //    return 1;
-    //}
+        s->to_matrix(s, m);     // write seed to matrix
+    }
 
-    s->to_matrix(s, m);     // write seed to matrix
-    init_ui();              // setup curses ui
-
+    init_ui();                  // setup curses ui
     loop(&state, m, vp);
-
     cleanup_ui();
     return 0;
 }

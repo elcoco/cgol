@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "assert.h"
 
 #include "utils.h"
 
@@ -54,7 +55,7 @@ struct Node {
 
     int(*count_neighbours)(Node* self); 
     int(*becomes_alive)(Node* self); 
-    void(*print)(Node* self);
+    void(*print_node)(Node* self);
 };
 
 // what to do when a patern moves beyond it's borders
@@ -114,7 +115,8 @@ struct Matrix {
 };
 
 Matrix* init_matrix(int size_x, int size_y);
+
+// helper function to print a full linked list starting at n
 void print_linked_list(Node* n);
-void print_viewport(ViewPort* self);
 
 #endif

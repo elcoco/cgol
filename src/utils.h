@@ -33,10 +33,10 @@ typedef struct {
     bool do_clear;
 } State;
 
-int get_loc(int xlim, int ylim, int cur_index, int xmov, int ymov, EdgePolicy edge_policy);
 int get_index(int xlim, int ylim, int x, int y, EdgePolicy edge_policy);
 bool parse_args(State* state, int argc, char** argv);
 void print_usage();
 int get_speed_incr(int speed, int incr);
+int get_rand(int lower, int upper);
 
 #endif
