@@ -110,37 +110,3 @@ int get_rand(int lower, int upper)
 {
     return (rand() % (upper - lower + 1)) + lower;
 }
-
-/*
-int test(int argc, char** argv) {
-    Matrix* m = init_matrix(5, 5);
-    m->edge_policy = EP_STOP;
-    m->init_nodes(m);
-
-    ViewPort* vp = m->init_viewport(m);
-
-    State state;
-    set_defaults(&state);
-
-    if (!parse_args(&state, argc, argv))
-        return 1;
-
-    vp->update_viewport(vp, m, 0,
-                               0,
-                               3,
-                               3);
-    Seed* s = init_seed(5, 5);
-
-    if (s->read_file(s, state.seed_path) < 0)
-        return 1;
-
-    s->to_matrix(s, m);     // write seed to matrix
-
-    print_viewport(vp);
-
-    init_ui();              // setup curses ui
-    show_matrix(vp);
-    sleep(1000);
-    cleanup_ui();
-}
-*/
