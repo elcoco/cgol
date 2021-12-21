@@ -72,100 +72,92 @@ bool fast_forward(char** c, char* search_lst, char* expected_lst, char* ignore_l
     return true;
 }
 
-int read_rle(Seed* self, char* path) {
-    char buf[5000];
-    FILE *fp = fopen(path, "r");
+void RLE_to_str(int amount, char type, char* buf) {
+    /* Convert RLE notation to a string representation */
+    for (int i=0 ; i<amount ; i++)
+        strcat(buf, (type == 'o') ? "O" : " ");
+}
 
+int read_rle(Seed* self, char* path) {
+    char sbuf[5000];            // source buffer
+    char lbuf[500] = {'\0'};    // line buffer
+    char* spos = sbuf;          // source position pointer
+    char** dpos = self->data;   // destination position pointer
+    char c;
+
+    FILE *fp = fopen(path, "r");
     if (fp == NULL) {
         printf("File not found!\n");
         return -1;
     }
 
-    // save all chars in buffer
-    char* ptr = buf;
-    char chr;
-    while ((chr = fgetc(fp)) != EOF )
-        *ptr++ = chr;
-    *ptr = '\0';
-    printf("%s\n", buf);
+    // read all chars in buffer
+    while ((c = fgetc(fp)) != EOF )
+        *spos++ = c;
+    *spos = '\0';
 
-    // parse char by char
-    char* c = buf;
-    for (int i=0 ; i<strlen(buf) ; i++, c++) {
+    // reset position in source buffer
+    spos = sbuf;
 
-        if (*c == '#')
-        {
+    // parse RLE char by char
+    for (int i=0 ; i<strlen(sbuf) ; i++, spos++) {
+
+        if (*spos == '#') {
             char comment[500] = "";
-            fast_forward(&c, "\n", NULL, "\n", comment);
+            fast_forward(&spos, "\n", NULL, "\n", comment);
             printf("Ignoring comment: %s\n", comment);
         }
-        else if (strchr("x", *c))
-        {
+
+        else if (strchr("x", *spos)) {
             char header[500] = "";
-            fast_forward(&c, "\n", NULL, "\n", header);
-            printf("Ignoring header line: %s\n", header);
+            fast_forward(&spos, "\n", NULL, "\n", header);
+            printf("Ignoring header: %s\n", header);
         }
-        else if (strchr("0123456789", *c))
-        {
-            char amount[100] = "";
-            if (!fast_forward(&c, "ob", "01234567890", "\n", amount)) {
-                printf("RLE format error, found unexpected chars: %s + %c\n", amount, *c);
-                continue;
+
+        // is multiple dead/alive cells or newlines
+        else if (strchr("0123456789", *spos)) {
+            char amount[10] = "";
+            if (!fast_forward(&spos, "ob$", "01234567890", "\n", amount)) {
+                printf("RLE syntax error, found unexpected chars: %s + %c\n", amount, *spos);
+                return -1;
             }
-            printf("amount: %s cell type: %c\n", amount, *c);
-        }
-        else if (strchr("ob", *c))
-        {
-            printf("amount: 1 cell type: %c\n", *c);
-        }
-        else if (strchr("$", *c))
-        {
-            printf("EOL\n");
-        }
-        else if (strchr("!", *c))
-        {
-            printf("EOF\n");
-            break;
-        }
-    }
-    return 0;
 
-    /*
+            if (*spos == '$') {
+                // if char == $: this means amount*newline
+                if (strlen(lbuf) > 0) {
+                    *dpos++ = strdup(lbuf);
+                    self->seed_x = (strlen(lbuf) > self->seed_x) ? strlen(lbuf) : self->seed_x;
+                    self->seed_y++;
+                }
 
-
-
-    printf("bevers\n");
-
-        if (c == '#') {
-
-        // skip comments
-        if (buf[0] == '#' && buf[1] == 'C') {
-            printf("comment: %s\n", buf);
-            continue;
+                for (int newline=0 ; newline<atoi(amount)-1 ; newline++, self->seed_y++)
+                    *dpos++ = strdup("");
+                lbuf[0] = '\0';
+            } 
+            else {
+                // if char == o|b: this means amount*(alive|dead)
+                RLE_to_str(atoi(amount), *spos, lbuf);
+            }
         }
 
-        //printf("%s\n", buf);
-        char* c = buf;
+        // is 1 dead or alive cell
+        else if (strchr("ob", *spos)) {
+            RLE_to_str(1, *spos, lbuf);
+        }
 
-        if (!chrcmp(*c, "0123456789bo$!"))
-            continue;
-
-        printf("new line: %s\n", c);
-        for (int i=0 ; i<strlen(buf) ; i++, c++) {
-            
-
-            if (*c == '!') {
-                printf("EOF\n");
+        // is EOL or EOF
+        else if (strchr("$!", *spos)) {
+            *dpos++ = strdup(lbuf);
+            self->seed_x = (strlen(lbuf) > self->seed_x) ? strlen(lbuf) : self->seed_x;
+            self->seed_y++;
+            lbuf[0] = '\0';
+            if (*spos == '!')
                 break;
-            }
-
-        }
         }
     }
-
-    fclose(fp);
+    self->print_seed(self);
+    printf("seed x/y: %d, %d\n", self->seed_x, self->seed_y);
     return 0;
-    */
 }
 
 void print_seed(Seed* self) {
@@ -186,14 +178,13 @@ int to_matrix(Seed* self, Matrix* m) {
     int xmin = 0 - (self->seed_x / 2);
     int ymin = 0 - (self->seed_y / 2);
     int xmax = xmin + self->seed_x;
-    int ymax = ymin + self->seed_y-1;
+    int ymax = ymin + self->seed_y;
 
     int i = 0;
 
-    for (int y=ymin ; y<=ymax ; y++, dptr++) {
+    for (int y=ymin ; y<ymax ; y++, dptr++) {
         char* c = *dptr;
 
-        //for (int x=xmin ; x<=(xmin + strlen(*dptr)) ; x++, c++) {
         for (int x=xmin ; x<=xmax ; x++, c++) {
             // only allowed char is O!
             if (*c != 'O')
@@ -208,10 +199,6 @@ int to_matrix(Seed* self, Matrix* m) {
 
             // add node to linked list, which is used for faster iteration inbetween generations
             m->insert_alive_node(m, n);
-
-            //printf("\n");
-            //n->print(n);
-            //printf("\n");
         } 
     }
     printf("Finished putting seed in matrix, enabled %d nodes.\n", i);
