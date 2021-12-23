@@ -6,8 +6,7 @@ bool check_ext(char* path, char* ext)
     /* check file extension */
     char* x;
     if ((x = strrchr(path, '.')) != NULL) {
-        if (strcmp(x, ext) > 0)
-            return true;
+        return (strcmp(x, ext) == 0);
     }
     return false;
 }
@@ -183,12 +182,12 @@ int parse_rle(Seed* seed, char* path)
 
 int read_file(Seed* self, char* path)
 {
-    if (check_ext(path, ".jre")) {
-        printf("read RLE\n");
+    if (check_ext(path, ".rle")) {
+        printf("Reading RLE file: %s\n", path);
         return parse_rle(self, path);
     }
     else {
-        printf("Read plain text\n");
+        printf("Reading text file: %s\n", path);
         return parse_text(self, path);
     }
 }

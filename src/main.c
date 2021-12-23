@@ -35,9 +35,9 @@
  * DONE update viewport dimensions on terminal resize
  * TODO indicate if matrix is in a stable state
  * DONE viewport xy offset should not go beyond limits
- * TODO  Segfault when making terminal bigger, doesn't happen when making term smaller
+ * TODO Segfault when making terminal bigger, doesn't happen when making term smaller
  * DONE draw patterns with mouse
- * TODO write a RLE pattern file decoder
+ * DONE write a RLE pattern file decoder
  * TODO make curses help window
  * DONE make shading optional
  * DONE make origin in center

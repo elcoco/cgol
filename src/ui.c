@@ -2,7 +2,8 @@
 
 WINDOW *ui_window = NULL;
 
-int init_ui() {
+int init_ui()
+{
     ui_window = initscr();
 
     if (ui_window == NULL)
@@ -18,14 +19,16 @@ int init_ui() {
     printf("\033[?1003h\n"); // Makes the terminal report mouse movement events
 }
 
-void cleanup_ui() {
+void cleanup_ui()
+{
     printf("\033[?1003l\n"); // Disable mouse movement events, as l = low
     delwin(ui_window);
     endwin();
     refresh();
 }
 
-int get_color(int age) {
+int get_color(int age)
+{
     int col = (age / 10) +1;
     if (col > 8)
         col = 8;
@@ -34,7 +37,8 @@ int get_color(int age) {
     return col;
 }
 
-void show_matrix(ViewPort* self) {
+void show_matrix(ViewPort* self)
+{
     /* Put data from viewport into curses matrix */
     Node** nodes = self->nodes;
 
@@ -62,7 +66,8 @@ void show_matrix(ViewPort* self) {
     return;
 }
 
-void init_colors() {
+void init_colors()
+{
     use_default_colors();
 
     if(has_colors()) {
@@ -86,7 +91,8 @@ void init_colors() {
     }
 } 
 
-bool non_blocking_sleep(int interval, bool(*callback)(void* arg), void* arg) {
+bool non_blocking_sleep(int interval, bool(*callback)(void* arg), void* arg)
+{
     /* Do a non blocking sleep that checks for user input */
     struct timeval t_start, t_end;
     gettimeofday(&t_start, NULL);
