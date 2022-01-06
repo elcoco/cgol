@@ -47,7 +47,7 @@ int get_index(int xlim, int ylim, int x, int y, EdgePolicy edge_policy)
 
 void print_usage()
 {
-    printf("Seagull :: Game of life written in C!\n");
+    printf("CGOL :: Game of life written in C!\n");
     //printf("\nMandatory arguments:\n");
     printf("\nOptional arguments:\n");
     printf("    -f SEED_FILE  Set seed file\n");

@@ -14,7 +14,7 @@ $(shell mkdir -p $(BUILD_DIR))
 # 	  action
 
 default: ui.o utils.o matrix.o seed.o main.o
-	$(CC) $(BUILD_DIR)/ui.o $(BUILD_DIR)/utils.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/seed.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/seagull
+	$(CC) $(BUILD_DIR)/ui.o $(BUILD_DIR)/utils.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/seed.o $(BUILD_DIR)/main.o $(CFLAGS) -o $(BIN_DIR)/cgol
 
 utils.o: $(SRC_DIR)/utils.c $(SRC_DIR)/utils.h
 	$(CC) -c $(SRC_DIR)/utils.c -o $(BUILD_DIR)/utils.o
