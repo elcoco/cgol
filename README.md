@@ -31,3 +31,4 @@
 
 ## Seed files
 Seed files can be found in the *seeds* dir in the repo.  
+cgol can read RLE and CELL files by using the '''-f''' switch.  
