@@ -14,21 +14,23 @@ About Game of life: [wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of
         -r            Set random seed
         -w            Set wrapping edges
 
-## Compile and run
+## Build and run
     make
     ./cgol -s 500 -f seeds/koksgalaxy.cells
 
-## Keys
+## Controls
 
-    hjkl    - pan
-    HJKL    - pan large steps
-    0       - reset pan
-    s       - step
-    S       - toggle shading
-    c       - clear screen
-    +/-     - change speed
-    <space> - toggle paused
-    q       - quit
+|   Key   |   Description   |
+|---------------------------|
+| hjkl    | pan             |
+| HJKL    | pan large steps |
+| 0       | reset pan       |
+| s       | step            |
+| S       | toggle shading  |
+| c       | clear screen    |
+| +/-     | change speed    |
+| space   | toggle paused   |
+| q       | quit            |
 
     Use mouse to draw patterns
 
