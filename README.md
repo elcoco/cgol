@@ -1,7 +1,6 @@
 # CGOL :: Ncurses game of life in C
 
 ![screenshot.png](screenshot.png)
-![screenshot3.png](screenshot3.png)
 
 About Game of life: [wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
 
