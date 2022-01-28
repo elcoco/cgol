@@ -21,7 +21,7 @@ About Game of life: [wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of
 ## Controls
 
 |   Key   |   Description   |
-|---------------------------|
+| ------- | --------------- |
 | hjkl    | pan             |
 | HJKL    | pan large steps |
 | 0       | reset pan       |
@@ -32,7 +32,7 @@ About Game of life: [wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of
 | space   | toggle paused   |
 | q       | quit            |
 
-    Use mouse to draw patterns
+Use mouse to draw patterns
 
 
 ## Seed files
