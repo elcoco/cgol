@@ -35,4 +35,4 @@ About Game of life: [wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of
 
 ## Seed files
 Seed files can be found in the *seeds* dir in the repo.  
-cgol can read RLE and CELL files by using the `-f` switch.  
+Cgol can read RLE and CELL files by using the `-f` switch.  
