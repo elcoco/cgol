@@ -1,5 +1,7 @@
 # CGOL
 
+![screenshot.png](screenshot.png)
+
     $ ./cgol 
     CGOL :: Game of life written in C!
 
